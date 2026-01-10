@@ -1,279 +1,275 @@
+const http = require('http');
+const net = require('net');
 
-// builtin
-var http = require('http');
-var net = require('net');
-var FreeList = require('freelist').FreeList;
+const debug = require('debug')('localtunnel:server');
 
-// here be dragons
-var HTTPParser = process.binding('http_parser').HTTPParser;
-var ServerResponse = http.ServerResponse;
-var IncomingMessage = http.IncomingMessage;
+const clients = new Map();
+const tunnelServers = new Map();
+const waitList = new Map();
 
-var log = require('book');
+const CHARS = 'abcdefghijklmnopqrstuvwxyz';
 
-var chars = 'abcdefghiklmnopqrstuvwxyz';
-function rand_id() {
-    var randomstring = '';
-    for (var i=0; i<4; ++i) {
-        var rnum = Math.floor(Math.random() * chars.length);
-        randomstring += chars[rnum];
-    }
-
-    return randomstring;
+function generateId() {
+  let id = '';
+  for (let i = 0; i < 4; i++) {
+    id += CHARS[Math.floor(Math.random() * CHARS.length)];
+  }
+  return id;
 }
 
-var server = http.createServer();
-
-// id -> client http server
-var clients = {};
-
-// id -> list of sockets waiting for a valid response
-var wait_list = {};
-
-var parsers = http.parsers;
-
-// data going back to a client (the last client that made a request)
-function socketOnData(d, start, end) {
-
-    var socket = this;
-    var req = this._httpMessage;
-
-    var current = clients[socket.subdomain].current;
-
-    if (!current) {
-        log.error('no current for http response from backend');
-        return;
-    }
-
-    // send the goodies
-    current.write(d.slice(start, end));
-
-    // invoke parsing so we know when all the goodies have been sent
-    var parser = current.out_parser;
-    parser.socket = socket;
-
-    var ret = parser.execute(d, start, end - start);
-    if (ret instanceof Error) {
-        debug('parse error');
-        freeParser(parser, req);
-        socket.destroy(ret);
-    }
+function getWaitList(clientId) {
+  if (!waitList.has(clientId)) {
+    waitList.set(clientId, []);
+  }
+  return waitList.get(clientId);
 }
 
-function freeParser(parser, req) {
-    if (parser) {
-        parser._headers = [];
-        parser.onIncoming = null;
-        if (parser.socket) {
-            parser.socket.onend = null;
-            parser.socket.ondata = null;
-            parser.socket.parser = null;
-        }
-        parser.socket = null;
-        parser.incoming = null;
-        parsers.free(parser);
-        parser = null;
+class TunnelConnection {
+  constructor(socket, clientId) {
+    this.socket = socket;
+    this.clientId = clientId;
+    this.queue = null;
+
+    socket.on('data', (data) => this.handleData(data));
+    socket.on('end', () => this.handleEnd());
+    socket.on('close', () => this.handleClose());
+    socket.on('error', (err) => debug('socket error: %s', err.message));
+  }
+
+  handleData(data) {
+    const client = clients.get(this.clientId);
+    if (!client) return;
+
+    if (client.current && client.current !== this.socket) {
+      debug('pausing request for: %s', this.clientId);
+      this.socket.pause();
+      this.queue = Buffer.from(data);
+      getWaitList(this.clientId).push(this);
+      return;
     }
-    if (req) {
-        req.parser = null;
+
+    client.current = this.socket;
+    client.write(data);
+  }
+
+  handleEnd() {
+    const client = clients.get(this.clientId);
+    if (client && client.current === this.socket) {
+      client.current = null;
     }
+    this.socket.destroy();
+  }
+
+  handleClose() {
+    if (clients.get(this.clientId) === this.socket) {
+      clients.delete(this.clientId);
+    }
+    const list = waitList.get(this.clientId);
+    if (list) {
+      const idx = list.indexOf(this);
+      if (idx !== -1) list.splice(idx, 1);
+    }
+  }
 }
 
-// single http connection
-// gets a single http response back
-server.on('connection', function(socket) {
+function handleNewTunnelRequest(req, res, requestedClientId = null) {
+  const clientId = requestedClientId || generateId();
+  debug('creating new tunnel for client: %s', clientId);
 
-    var self = this;
+  const tunnelServer = net.createServer();
 
-    var for_client = false;
-    var client_id;
+  tunnelServer.listen(0, () => {
+    const port = tunnelServer.address().port;
+    const origin = req.headers.host || 'localhost';
+    tunnelServers.set(clientId, tunnelServer);
 
-    var request;
+    debug('tunnel server listening on port: %d', port);
 
-    //var parser = new HTTPParser(HTTPParser.REQUEST);
-    var parser = parsers.alloc();
-    parser.socket = socket;
-    parser.reinitialize(HTTPParser.REQUEST);
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ url: `http://${clientId}.${origin}`, port, id: clientId }));
+  });
 
-    // a full request is complete
-    // we wait for the response from the server
-    parser.onIncoming = function(req, shouldKeepAlive) {
+  const connTimeout = setTimeout(() => {
+    debug('client %s failed to connect', clientId);
+    tunnelServers.delete(clientId);
+    tunnelServer.close();
+  }, 5000);
 
-        log.trace('request', req.url);
-        request = req;
+  tunnelServer.on('connection', (socket) => {
+    clearTimeout(connTimeout);
 
-        for_client = false;
+    socket.clientId = clientId;
+    clients.set(clientId, socket);
+    waitList.set(clientId, []);
 
-        var hostname = req.headers.host;
-        var match = hostname.match(/^([a-z]{4})[.].*/);
+    new TunnelConnection(socket, clientId);
 
-        if (!match) {
-            // normal processing if not proxy
-            var res = new ServerResponse(req);
-            res.assignSocket(parser.socket);
-            self.emit('request', req, res);
-            return;
-        }
-
-        client_id = match[1];
-        for_client = true;
-
-        var out_parser = parsers.alloc();
-        out_parser.reinitialize(HTTPParser.RESPONSE);
-        socket.out_parser = out_parser;
-
-        // we have a response
-        out_parser.onIncoming = function(res) {
-            res.on('end', function() {
-                log.trace('done with response for: %s', req.url);
-
-                // done with the parser
-                parsers.free(out_parser);
-
-                var next = wait_list[client_id].shift();
-
-                clients[client_id].current = next;
-
-                if (!next) {
-                    return;
-                }
-
-                // write original bytes that we held cause client was busy
-                clients[client_id].write(next.queue);
-                next.resume();
-            });
-        };
-    };
-
-    // process new data on the client socket
-    // we may need to forward this it the backend
-    socket.ondata = function(d, start, end) {
-        var ret = parser.execute(d, start, end - start);
-
-        // invalid request from the user
-        if (ret instanceof Error) {
-            debug('parse error');
-            socket.destroy(ret);
-            return;
-        }
-
-        // only write data if previous request to this client is done?
-        log.trace('%s %s', parser.incoming && parser.incoming.upgrade, for_client);
-
-        // what if the subdomains are treated differently
-        // as individual channels to the backend if available?
-        // how can I do that?
-
-        if (parser.incoming && parser.incoming.upgrade) {
-            // websocket shit
-        }
-
-        // wtf do you do with upgraded connections?
-
-        // forward the data to the backend
-        if (for_client) {
-            var client = clients[client_id];
-
-            // requesting a subdomain that doesn't exist
-            if (!client) {
-                return;
-            }
-
-            // if the client is already processing something
-            // then new connections need to go into pause mode
-            // and when they are revived, then they can send data along
-            if (client.current && client.current !== socket) {
-                log.trace('pausing', request.url);
-                // prevent new data from gathering for this connection
-                // we are waiting for a response to a previous request
-                socket.pause();
-
-                var copy = Buffer(end - start);
-                d.copy(copy, 0, start, end);
-                socket.queue = copy;
-
-                wait_list[client_id].push(socket);
-
-                return;
-            }
-
-            // this socket needs to receive responses
-            client.current = socket;
-
-            // send through tcp tunnel
-            client.write(d.slice(start, end));
-        }
-    };
-
-    socket.onend = function() {
-        var ret = parser.finish();
-
-        if (ret instanceof Error) {
-            log.trace('parse error');
-            socket.destroy(ret);
-            return;
-        }
-
-        socket.end();
-    };
-
-    socket.on('close', function() {
-        parsers.free(parser);
+    socket.on('end', () => {
+      clients.delete(clientId);
     });
-});
+  });
 
-server.on('request', function(req, res) {
+  tunnelServer.on('error', (err) => {
+    debug('tunnel server error: %s', err.message);
+    res.writeHead(500);
+    res.end('Internal Server Error');
+  });
+}
 
-    // generate new shit for client
-    var id = 'asdf';
-    //rand_id();
-    //
-    //
-    if (wait_list[id]) {
-        wait_list[id].forEach(function(waiting) {
-            waiting.end();
-        });
+function handleProxyRequest(req, res, hostname) {
+  const match = hostname.match(/^([a-z]{4})[.]/);
+
+  if (!match) {
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Not Found');
+    return;
+  }
+
+  const clientId = match[1];
+  const client = clients.get(clientId);
+
+  if (!client) {
+    debug('client not found for id: %s', clientId);
+    res.writeHead(404, { 'Content-Type': 'text/plain' });
+    res.end('Tunnel not found');
+    return;
+  }
+
+  debug('proxying request to client: %s, socket destroyed: %s', clientId, client.destroyed);
+
+  client.on('error', (err) => {
+    debug('client socket error: %s', err.message);
+  });
+
+  client.on('close', () => {
+    debug('client socket closed');
+  });
+
+  client.on('end', () => {
+    debug('client socket ended');
+  });
+
+  let body = Buffer.alloc(0);
+
+  req.on('data', (chunk) => {
+    body = Buffer.concat([body, chunk]);
+  });
+
+  req.on('end', () => {
+    const requestData = `${req.method} ${req.url} HTTP/1.1\r\n${Object.entries(req.headers).map(([k, v]) => `${k}: ${v}`).join('\r\n')}\r\n\r\n${body.toString()}`;
+
+    if (client.destroyed || client.readyState === 'closed') {
+      res.writeHead(502, { 'Content-Type': 'text/plain' });
+      res.end('Tunnel connection closed');
+      return;
     }
 
-    var client_server = net.createServer();
-    client_server.listen(function() {
-        var port = client_server.address().port;
-        log.info('tcp server listening on port: %d', port);
+    if (client.activeRequest) {
+      debug('client busy, queuing request');
+      const waiting = { req, res };
+      getWaitList(clientId).push(waiting);
+      return;
+    }
 
-        var url = 'http://' + id + '.' + req.headers.host;
+    client.activeRequest = { req, res };
 
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ url: url, port: port }));
+    const onClientData = (data) => {
+      res.write(data);
+    };
+
+    const onClientEnd = () => {
+      res.end();
+      cleanup();
+    };
+
+    const onClientError = (err) => {
+      debug('client error during proxy: %s', err.message);
+      res.writeHead(502);
+      res.end('Bad Gateway');
+      cleanup();
+    };
+
+    const cleanup = () => {
+      client.removeListener('data', onClientData);
+      client.removeListener('end', onClientEnd);
+      client.removeListener('error', onClientError);
+      client.activeRequest = null;
+
+      const next = waitList.get(clientId).shift();
+      if (next) {
+        handleProxyRequest(next.req, next.req, hostname);
+      }
+    };
+
+    client.on('data', onClientData);
+    client.once('end', onClientEnd);
+    client.on('error', onClientError);
+
+    client.once('close', () => {
+      debug('client socket closed during proxy');
+      cleanup();
     });
 
-    // user has 5 seconds to connect before their slot is given up
-    var conn_timeout = setTimeout(function() {
-        client_server.close();
-    }, 5000);
+    debug('writing request to client, length: %d', requestData.length);
+    const wrote = client.write(requestData);
+    debug('write result: %s', wrote);
+  });
+}
 
-    client_server.on('connection', function(socket) {
+function handleRequest(req, res) {
+  const hostname = req.headers.host || '';
+  const subdomainMatch = hostname.match(/^([a-z0-9]+)[.]([^:]+)(?::(\d+))?$/);
+  const clientId = subdomainMatch ? subdomainMatch[1] : null;
 
-        // who the info should route back to
-        socket.subdomain = id;
+  const pathSubdomainMatch = req.url.match(/^\/([a-z0-9]+)(\/|$)/);
+  const pathClientId = pathSubdomainMatch ? pathSubdomainMatch[1] : null;
 
-        // multiplexes socket data out to clients
-        socket.ondata = socketOnData;
+  debug('Received request: %s %s, host: %s, pathClientId: %s', req.method, req.url, hostname, pathClientId);
 
-        clearTimeout(conn_timeout);
+  if (req.url === '/' || req.url.toLowerCase().startsWith('/?new') || req.url.includes('?new')) {
+    debug('New tunnel request (root path)');
+    handleNewTunnelRequest(req, res);
+    return;
+  }
 
-        log.trace('new connection for id: %s', id);
-        clients[id] = socket;
-        wait_list[id] = [];
+  if (clientId && clients.has(clientId)) {
+    debug('Proxy request for existing client: %s', clientId);
+    handleProxyRequest(req, res, hostname);
+    return;
+  }
 
-        socket.on('end', function() {
-            delete clients[id];
-        });
-    });
+  if (pathClientId) {
+    debug('New tunnel request for subdomain in path: %s', pathClientId);
+    handleNewTunnelRequest(req, res, pathClientId);
+    return;
+  }
 
-    client_server.on('err', function(err) {
-        log.error(err);
-    });
-});
+  if (clientId) {
+    debug('New tunnel request for subdomain in host: %s', clientId);
+    handleNewTunnelRequest(req, res, clientId);
+    return;
+  }
 
-server.listen(8000);
+  debug('Not found');
+  res.writeHead(404, { 'Content-Type': 'text/plain' });
+  res.end('Not Found');
+}
 
+function createServer(port = 8000) {
+  const server = http.createServer(handleRequest);
+  server.listen(port, () => {
+    debug('localtunnel server listening on port %d', port);
+  });
+  server.on('error', (err) => {
+    debug('server error: %s', err.message);
+  });
+  return server;
+}
+
+const PORT = process.env.PORT || 8000;
+
+if (require.main === module) {
+  createServer(PORT);
+}
+
+module.exports = { createServer, clients, tunnelServers, waitList };
