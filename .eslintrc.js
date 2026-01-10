@@ -1,9 +1,9 @@
 module.exports = {
-  parser: 'babel-eslint',
-  extends: ['airbnb', 'prettier', 'plugin:jest/recommended'],
-  plugins: ['prettier', 'jest'],
+  extends: ['airbnb-base', 'prettier'],
+  plugins: ['prettier'],
   env: {
-    'jest/globals': true,
+    node: true,
+    mocha: true,
   },
   rules: {
     'prettier/prettier': [
