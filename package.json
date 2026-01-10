@@ -1,11 +1,11 @@
 {
   "name": "localtunnel",
   "description": "Expose localhost to the world",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git://github.com/localtunnel/localtunnel.git"
+    "url": "git://github.com/imsus/localtunnel.git"
   },
   "author": "Roman Shtylman <shtylman@gmail.com>",
   "contributors": [
@@ -22,7 +22,7 @@
     "test": "mocha --reporter list --timeout 60000 -- *.spec.js"
   },
   "engines": {
-    "node": ">=8.3.0"
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "axios": "^1.7.9",
