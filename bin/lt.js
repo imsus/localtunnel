@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
 
-const openurl = require('openurl');
+const open = require('open');
 const yargs = require('yargs');
 
 const localtunnel = require('../localtunnel');
@@ -93,7 +92,7 @@ if (typeof argv.port !== 'number') {
   }
 
   if (argv.open) {
-    openurl.open(tunnel.url);
+    await open(tunnel.url);
   }
 
   if (argv['print-requests']) {
