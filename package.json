@@ -12,6 +12,7 @@
     "expose-localhost",
     "dev-tools"
   ],
+  "author": "Imam Susanto <abc.imams@gmail.com>",
   "version": "3.0.0",
   "workspaces": {
     "packages": [
