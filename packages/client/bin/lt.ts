@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { Effect } from "effect";
 import { openTunnel } from "../src/client.js";
 
 interface Args {
@@ -86,16 +87,18 @@ if (!parsedArgs.port) {
   process.exit(1);
 }
 
-const tunnel = await openTunnel(parsedArgs.port, {
-  subdomain: parsedArgs.subdomain,
-  host: parsedArgs.host,
-  localHost: parsedArgs.localHost,
-  localHttps: parsedArgs.localHttps,
-  localCert: parsedArgs.localCert,
-  localKey: parsedArgs.localKey,
-  localCa: parsedArgs.localCa,
-  allowInvalidCert: parsedArgs.allowInvalidCert,
-});
+const tunnel = await Effect.runPromise(
+  openTunnel(parsedArgs.port, {
+    subdomain: parsedArgs.subdomain,
+    host: parsedArgs.host,
+    localHost: parsedArgs.localHost,
+    localHttps: parsedArgs.localHttps,
+    localCert: parsedArgs.localCert,
+    localKey: parsedArgs.localKey,
+    localCa: parsedArgs.localCa,
+    allowInvalidCert: parsedArgs.allowInvalidCert,
+  }),
+);
 
 console.log("Tunnel established at " + tunnel.url);
 

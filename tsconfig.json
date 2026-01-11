@@ -11,10 +11,8 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "composite": true,
-    "tsBuildInfoFile": "node_modules/.tmp/tsconfig.tsbuildinfo"
+    "allowImportingTsExtensions": true
   },
   "include": ["packages/*/src/**/*.ts", "packages/*/bin/**/*.ts", "packages/*/test/**/*.ts"],
-  "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "./packages/client" }, { "path": "./packages/server" }]
+  "exclude": ["node_modules", "dist"]
 }

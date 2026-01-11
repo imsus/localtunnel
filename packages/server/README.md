@@ -104,8 +104,8 @@ class ClientError {
 
 ```typescript
 interface ServerConfig {
-  host: string;    // Host to bind to (default: "0.0.0.0")
-  port: number;    // Port to listen on (required)
+  host: string; // Host to bind to (default: "0.0.0.0")
+  port: number; // Port to listen on (required)
 }
 ```
 

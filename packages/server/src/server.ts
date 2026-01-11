@@ -1,13 +1,13 @@
 import { Effect, Scope } from "effect";
 import * as net from "net";
-import { ServerError, ClientError, type ServerErrors } from "./errors.js";
+import { ServerError, ClientError, type ServerErrors } from "./errors";
 
 export interface ServerConfig {
   host: string;
   port: number;
 }
 
-export type { ServerErrors } from "./errors.js";
+export type { ServerErrors } from "./errors";
 
 const CHARS = "abcdefghijklmnopqrstuvwxyz";
 
@@ -185,14 +185,17 @@ const createHttpServer = (
             }
           }, 5000);
 
-          return new Response(JSON.stringify({
-            url: tunnelInfo.url,
-            port: tunnelInfo.port,
-            id: tunnelInfo.clientId,
-          }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({
+              url: tunnelInfo.url,
+              port: tunnelInfo.port,
+              id: tunnelInfo.clientId,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
         }
 
         const targetClientId = clientIdFromHost || pathClientId;
@@ -227,14 +230,17 @@ const createHttpServer = (
           const tunnelInfo = createTunnelServer(port, hostname, clientIdFromHost);
           tunnelServers.set(tunnelInfo.clientId, tunnelInfo);
 
-          return new Response(JSON.stringify({
-            url: tunnelInfo.url,
-            port: tunnelInfo.port,
-            id: tunnelInfo.clientId,
-          }), {
-            status: 200,
-            headers: { "Content-Type": "application/json" },
-          });
+          return new Response(
+            JSON.stringify({
+              url: tunnelInfo.url,
+              port: tunnelInfo.port,
+              id: tunnelInfo.clientId,
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
         }
 
         return new Response("Not Found", { status: 404 });
@@ -283,4 +289,4 @@ export const createServer = (
   });
 
 export const startServer = (port: number, host?: string): Promise<void> =>
-  Effect.runPromise(createServer(port, host));
+  Effect.runPromise(Effect.scoped(createServer(port, host)));

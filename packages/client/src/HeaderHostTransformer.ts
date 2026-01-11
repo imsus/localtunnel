@@ -1,5 +1,3 @@
-import type { ReadableStream } from "stream/web";
-
 export interface HeaderHostTransformerConfig {
   host: string;
 }
@@ -14,10 +12,6 @@ export class HeaderHostTransformer {
     this.replaced = false;
   }
 
-  transform(stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
-    return stream.pipeThrough(this.createTransform());
-  }
-
   private createTransform(): TransformStream<Uint8Array, Uint8Array> {
     return new TransformStream({
       transform: (chunk, controller) => {
@@ -27,7 +21,7 @@ export class HeaderHostTransformer {
         }
 
         const text = new TextDecoder().decode(chunk);
-        const replacedText = text.replace(/(\r\n[Hh]ost: )\S+/, (match, prefix) => {
+        const replacedText = text.replace(/(\r\n[Hh]ost: )\S+/, (_match, prefix) => {
           this.replaced = true;
           return prefix + this.host;
         });

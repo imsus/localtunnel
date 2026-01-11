@@ -11,6 +11,7 @@
     "lint": "oxlint .",
     "fmt": "oxfmt --write .",
     "check": "oxlint . && oxfmt --check . && bun test",
+    "typecheck": "npx tsc --noEmit",
     "compile": "bun run --filter '*' compile"
   },
   "devDependencies": {
@@ -18,6 +19,7 @@
     "@types/node": "^22.0.0",
     "effect": "^3.0.0",
     "oxfmt": "latest",
-    "oxlint": "latest"
+    "oxlint": "latest",
+    "typescript": "^5.9.3"
   }
 }

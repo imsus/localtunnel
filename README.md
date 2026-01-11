@@ -19,9 +19,11 @@ localtunnel/
 Exposes your localhost to the world. Connect to a tunnel server and forward traffic.
 
 **Binaries:**
+
 - `lt` - CLI tool to start a tunnel
 
 **API:**
+
 ```typescript
 import { openTunnel, openTunnelCluster } from "@localtunnel/client";
 
@@ -42,9 +44,11 @@ await tunnel.close();
 Run your own tunnel server. Accepts tunnel connections and proxies HTTP requests.
 
 **Binaries:**
+
 - `localtunnel-server` - CLI tool to start the server
 
 **Usage:**
+
 ```bash
 localtunnel-server --port 8080
 ```

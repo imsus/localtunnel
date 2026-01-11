@@ -40,14 +40,14 @@ await tunnel.close();
 import { openTunnelCluster } from "@localtunnel/client";
 
 const tunnel = await openTunnelCluster(3000, {
-  host: "localtunnel.me",      // Tunnel server URL
-  subdomain: "myapp",           // Request specific subdomain
-  localHost: "localhost",       // Proxy to different hostname
-  localHttps: true,            // Connect to local HTTPS server
-  localCert: "/path/to/cert",  // Certificate for local HTTPS
-  localKey: "/path/to/key",    // Key for local HTTPS
-  localCa: "/path/to/ca",      // CA for local HTTPS
-  allowInvalidCert: true,      // Skip cert validation
+  host: "localtunnel.me", // Tunnel server URL
+  subdomain: "myapp", // Request specific subdomain
+  localHost: "localhost", // Proxy to different hostname
+  localHttps: true, // Connect to local HTTPS server
+  localCert: "/path/to/cert", // Certificate for local HTTPS
+  localKey: "/path/to/key", // Key for local HTTPS
+  localCa: "/path/to/ca", // CA for local HTTPS
+  allowInvalidCert: true, // Skip cert validation
 });
 
 console.log(tunnel.url);
@@ -102,12 +102,14 @@ const tunnel = await openTunnelCluster(3000, {
 
 ```typescript
 interface Tunnel {
-  url: string;                                   // Public URL
-  close: () => Promise<void>;                    // Close the tunnel
-  onRequest: (listener: (info: {
-    method: string;                              // HTTP method
-    path: string;                                // Request path
-  }) => void) => void;                          // Listen for requests
+  url: string; // Public URL
+  close: () => Promise<void>; // Close the tunnel
+  onRequest: (
+    listener: (info: {
+      method: string; // HTTP method
+      path: string; // Request path
+    }) => void,
+  ) => void; // Listen for requests
 }
 ```
 
@@ -136,14 +138,14 @@ class TunnelError {
 
 ```typescript
 interface TunnelConfig {
-  host: string;              // Tunnel server URL
-  localPort: number;         // Local port to tunnel
-  subdomain?: string;        // Request specific subdomain
-  localHost?: string;        // Proxy to different hostname
-  localHttps?: boolean;      // Use HTTPS for local connection
-  localCert?: string;        // Path to certificate
-  localKey?: string;         // Path to key
-  localCa?: string;          // Path to CA
+  host: string; // Tunnel server URL
+  localPort: number; // Local port to tunnel
+  subdomain?: string; // Request specific subdomain
+  localHost?: string; // Proxy to different hostname
+  localHttps?: boolean; // Use HTTPS for local connection
+  localCert?: string; // Path to certificate
+  localKey?: string; // Path to key
+  localCa?: string; // Path to CA
   allowInvalidCert?: boolean; // Skip cert validation
 }
 ```

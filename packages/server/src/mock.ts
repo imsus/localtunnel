@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect";
-import { ServerConfig, ServerService } from "./service.js";
-import { ServerError } from "./errors.js";
+import { ServerConfig, ServerService } from "./service";
+import { ServerError } from "./errors";
 
 const mockServerConfig: ServerConfig = {
   host: "0.0.0.0",
@@ -10,10 +10,8 @@ const mockServerConfig: ServerConfig = {
 export const MockServerConfig = Layer.succeed(ServerConfig, mockServerConfig);
 
 export const MockServerServiceSuccess = Layer.succeed(ServerService, {
-  createServer: (_port: number, _host?: string) =>
-    Effect.succeed(undefined),
-  startServer: (_port: number, _host?: string) =>
-    Effect.succeed(undefined),
+  createServer: (_port: number, _host?: string) => Effect.succeed(undefined),
+  startServer: (_port: number, _host?: string) => Effect.succeed(undefined),
 });
 
 export const MockServerServiceFailure = Layer.succeed(ServerService, {
@@ -24,7 +22,4 @@ export const MockServerServiceFailure = Layer.succeed(ServerService, {
 });
 
 export const MockLive = Layer.merge(MockServerConfig, MockServerServiceSuccess);
-export const MockLiveFailure = Layer.merge(
-  MockServerConfig,
-  MockServerServiceFailure,
-);
+export const MockLiveFailure = Layer.merge(MockServerConfig, MockServerServiceFailure);
