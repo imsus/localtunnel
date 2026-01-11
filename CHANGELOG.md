@@ -1,3 +1,42 @@
+# 3.0.0 (2026-01-11)
+
+This is a complete rewrite of localtunnel, incompatible with previous versions.
+
+## Architecture
+
+- Migrated from JavaScript/Node.js to TypeScript/Bun
+- Converted from single package to monorepo structure (`packages/client`, `packages/server`, `packages/shared`)
+- Replaced callback-based API with Effect.ts for functional programming
+- Uses bun: APIs instead of native Node.js modules
+
+## Client Changes
+
+- New CLI with enhanced UX: `--config`, `--log-format`, `--verbose`
+- Environment variable support with `.env` file loading
+- Structured logging with pino
+- Promise-based API with Effect.ts integration
+- Configurable log formats (pretty/json)
+
+## Server Changes
+
+- Standalone server binary with admin API
+- PID file support
+- Config file support (`localtunnel-server.json`)
+- Metrics endpoint on admin port
+
+## Breaking Changes
+
+- New API: `openTunnel(port, config)` returns Effect
+- No callback support (use Effect.runPromise)
+- Different CLI arguments structure
+- Removed `--print-requests` flag (use structured logging)
+- Removed `--open` flag
+
+## Dependencies
+
+- Removed: axios, debug, openurl, yargs
+- Added: effect, pino, picocolors, bun
+
 # 2.0.2 (2021-09-18)
 
 - Upgrade dependencies
