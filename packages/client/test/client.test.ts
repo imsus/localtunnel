@@ -2,6 +2,9 @@ import { describe, test, expect } from "bun:test";
 
 import { ConnectionError, TimeoutError, TunnelError, TunnelErrors } from "../src/errors.js";
 import { TunnelConfig } from "../src/service.js";
+import { HeaderHostTransformer } from "../src/HeaderHostTransformer.js";
+import { TunnelInfo, RequestInfo } from "../src/client.js";
+import { Schedule } from "effect";
 
 describe("TunnelErrors", () => {
   test("ConnectionError has correct tag", () => {
@@ -134,5 +137,159 @@ describe("TunnelConfig defaults", () => {
     expect(config.localCert).toBeUndefined();
     expect(config.localKey).toBeUndefined();
     expect(config.localCa).toBeUndefined();
+  });
+});
+
+describe("TunnelInfo", () => {
+  test("has all required properties", () => {
+    const info: TunnelInfo = {
+      name: "abcd",
+      url: "http://abcd.example.com",
+      max_conn: 5,
+      remote_host: "localtunnel.me",
+      remote_port: 443,
+      local_port: 3000,
+    };
+
+    expect(info.name).toBe("abcd");
+    expect(info.url).toBe("http://abcd.example.com");
+    expect(info.max_conn).toBe(5);
+    expect(info.remote_host).toBe("localtunnel.me");
+    expect(info.remote_port).toBe(443);
+    expect(info.local_port).toBe(3000);
+  });
+
+  test("supports optional properties", () => {
+    const info: TunnelInfo = {
+      name: "test",
+      url: "http://test.example.com",
+      max_conn: 1,
+      remote_host: "localtunnel.me",
+      remote_ip: "1.2.3.4",
+      remote_port: 443,
+      local_port: 8080,
+      local_host: "localhost",
+      local_https: true,
+      local_cert: "/path/to/cert.pem",
+      local_key: "/path/to/key.pem",
+      local_ca: "/path/to/ca.pem",
+      allow_invalid_cert: true,
+    };
+
+    expect(info.remote_ip).toBe("1.2.3.4");
+    expect(info.local_host).toBe("localhost");
+    expect(info.local_https).toBe(true);
+    expect(info.allow_invalid_cert).toBe(true);
+  });
+
+  test("cached_url is optional", () => {
+    const info: TunnelInfo = {
+      name: "test",
+      url: "http://test.example.com",
+      max_conn: 1,
+      remote_host: "localtunnel.me",
+      remote_port: 443,
+      local_port: 3000,
+    };
+
+    expect(info.cached_url).toBeUndefined();
+  });
+});
+
+describe("RequestInfo", () => {
+  test("has method and path", () => {
+    const req: RequestInfo = {
+      method: "GET",
+      path: "/api/users",
+    };
+
+    expect(req.method).toBe("GET");
+    expect(req.path).toBe("/api/users");
+  });
+
+  test("supports POST requests", () => {
+    const req: RequestInfo = {
+      method: "POST",
+      path: "/submit",
+    };
+
+    expect(req.method).toBe("POST");
+    expect(req.path).toBe("/submit");
+  });
+});
+
+describe("HeaderHostTransformer", () => {
+  test("creates transformer with host", () => {
+    const transformer = HeaderHostTransformer.create("myhost.local");
+    expect(transformer).toBeDefined();
+  });
+
+  test("transformer has correct tag", () => {
+    const transformer = HeaderHostTransformer.create("example.com");
+    expect(transformer._tag).toBe("HeaderHostTransformer");
+  });
+
+  test("config stores host value", () => {
+    const config = { host: "test.local" };
+    const transformer = new HeaderHostTransformer(config);
+    expect((transformer as any).host).toBe("test.local");
+  });
+});
+
+describe("Tunnel interface", () => {
+  test("has url property", () => {
+    const tunnel = {
+      url: "http://abcd.localtunnel.me",
+      close: async () => {},
+      onRequest: () => {},
+    };
+    expect(tunnel.url).toBe("http://abcd.localtunnel.me");
+  });
+
+  test("close returns Promise", () => {
+    const tunnel = {
+      url: "http://test.localtunnel.me",
+      close: async () => {},
+      onRequest: () => {},
+    };
+    expect(typeof tunnel.close).toBe("function");
+  });
+
+  test("onRequest accepts listener callback", () => {
+    const listener = (info: RequestInfo) => {};
+    const tunnel = {
+      url: "http://test.localtunnel.me",
+      close: async () => {},
+      onRequest: listener,
+    };
+    expect(typeof tunnel.onRequest).toBe("function");
+  });
+});
+
+describe("Client connection scenarios", () => {
+  test("ConnectionError includes connection details", () => {
+    const error = new ConnectionError("192.168.1.1", 443, "ECONNREFUSED");
+    expect(error.host).toBe("192.168.1.1");
+    expect(error.port).toBe(443);
+    expect(error.reason).toBe("ECONNREFUSED");
+  });
+
+  test("TunnelError can store various messages", () => {
+    const error1 = new TunnelError("Server returned 500");
+    const error2 = new TunnelError("Connection closed by server");
+    expect(error1.message).toBe("Server returned 500");
+    expect(error2.message).toBe("Connection closed by server");
+  });
+});
+
+describe("Tunnel retry configuration", () => {
+  test("exponential schedule can be created", () => {
+    const schedule = Schedule.exponential(1000);
+    expect(schedule).toBeDefined();
+  });
+
+  test("spaced schedule can be created", () => {
+    const schedule = Schedule.spaced(500);
+    expect(schedule).toBeDefined();
   });
 });

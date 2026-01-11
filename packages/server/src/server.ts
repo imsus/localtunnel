@@ -2,20 +2,73 @@ import { Effect, Scope } from "effect";
 import * as net from "net";
 import { ServerError, ClientError, type ServerErrors } from "./errors.js";
 
-interface ServerConfig {
+export interface ServerConfig {
   host: string;
   port: number;
 }
 
-export { ServerConfig };
+export type { ServerErrors } from "./errors.js";
 
-const clients = new Map<string, net.Socket>();
+const CHARS = "abcdefghijklmnopqrstuvwxyz";
 
 const generateId = (): string => {
-  return Math.random().toString(36).substring(2, 15);
+  let id = "";
+  for (let i = 0; i < 4; i++) {
+    id += CHARS[Math.floor(Math.random() * CHARS.length)];
+  }
+  return id;
 };
 
-const parseClientId = (socket: net.Socket): Effect.Effect<string, ClientError> =>
+const parsePathSubdomain = (path: string): string | null => {
+  const match = path.match(/^\/([a-z0-9]+)(\/|$)/);
+  return match ? match[1] : null;
+};
+
+interface ClientConnection {
+  socket: net.Socket;
+  activeRequest: boolean;
+}
+
+interface WaitingRequest {
+  clientId: string;
+}
+
+interface TunnelServer {
+  clientId: string;
+  url: string;
+  port: number;
+  cleanup: () => void;
+}
+
+const createTunnelServer = (
+  port: number,
+  origin: string,
+  requestedClientId?: string,
+): TunnelServer => {
+  const clientId = requestedClientId ?? generateId();
+  const tunnelServer = net.createServer();
+  const url = `http://${clientId}.${origin}`;
+
+  tunnelServer.listen(0, () => {
+    const address = tunnelServer.address();
+    if (address && typeof address === "object" && "port" in address) {
+      (tunnelServer as any)._port = address.port;
+    }
+  });
+
+  const cleanup = () => {
+    tunnelServer.close();
+  };
+
+  return {
+    clientId,
+    url,
+    port: (tunnelServer as any)._port || port,
+    cleanup,
+  };
+};
+
+const parseClientHandshake = (socket: net.Socket): Effect.Effect<string, ClientError> =>
   Effect.async<string, ClientError>((resume) => {
     let data = "";
 
@@ -37,13 +90,30 @@ const parseClientId = (socket: net.Socket): Effect.Effect<string, ClientError> =
 
     socket.on("data", onData);
     socket.on("error", onError);
+
+    const timeout = setTimeout(() => {
+      if (!data) {
+        socket.removeListener("data", onData);
+        socket.removeListener("error", onError);
+        resume(Effect.fail(new ClientError("Handshake timeout")));
+      }
+    }, 5000);
+
+    socket.once("close", () => clearTimeout(timeout));
   });
 
-const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope.Scope> =>
+const handleClientConnection = (
+  socket: net.Socket,
+  clients: Map<string, ClientConnection>,
+  waitLists: Map<string, WaitingRequest[]>,
+): Effect.Effect<void, never, Scope.Scope> =>
   Effect.gen(function* () {
-    const clientId = yield* parseClientId(socket).pipe(Effect.orElseSucceed(() => generateId()));
+    const clientId = yield* parseClientHandshake(socket).pipe(
+      Effect.orElseSucceed(() => generateId()),
+    );
 
-    clients.set(clientId, socket);
+    clients.set(clientId, { socket, activeRequest: false });
+    waitLists.set(clientId, []);
 
     yield* Effect.addFinalizer(() =>
       Effect.sync(() => {
@@ -53,11 +123,16 @@ const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope.
     );
 
     socket.on("data", (chunk: Buffer) => {
-      for (const [id, clientSocket] of clients.entries()) {
-        if (id !== clientId && !clientSocket.destroyed) {
-          clientSocket.write(chunk);
-        }
+      const client = clients.get(clientId);
+      if (!client) return;
+
+      if (client.activeRequest) {
+        waitLists.get(clientId)!.push({ clientId });
+        socket.pause();
+        return;
       }
+
+      client.activeRequest = true;
     });
 
     socket.on("close", () => {
@@ -69,15 +144,138 @@ const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope.
     });
   });
 
-const acceptConnection = (server: net.Server): Effect.Effect<net.Socket, ServerError, never> =>
-  Effect.async<net.Socket, ServerError, never>((resume) => {
-    server.once("connection", (socket: net.Socket) => {
-      resume(Effect.succeed(socket));
+const createHttpServer = (
+  port: number,
+  host = "0.0.0.0",
+): Effect.Effect<void, ServerErrors, Scope.Scope> =>
+  Effect.gen(function* () {
+    const clients = new Map<string, ClientConnection>();
+    const waitLists = new Map<string, WaitingRequest[]>();
+    const tunnelServers = new Map<string, TunnelServer>();
+
+    yield* Effect.addFinalizer(() =>
+      Effect.sync(() => {
+        for (const client of clients.values()) {
+          client.socket.destroy();
+        }
+        for (const server of tunnelServers.values()) {
+          server.cleanup();
+        }
+      }),
+    );
+
+    const httpServer = Bun.serve({
+      hostname: host,
+      port,
+      fetch: (req, server) => {
+        const hostname = req.headers.get("host") || "";
+        const url = new URL(req.url, `http://${hostname}`);
+        const subdomainMatch = hostname.match(/^([a-z0-9]+)[.]([^:]+)(?::(\d+))?$/);
+        const clientIdFromHost = subdomainMatch ? subdomainMatch[1] : null;
+        const pathClientId = parsePathSubdomain(req.url);
+
+        if (req.url === "/" || req.url.startsWith("/?new") || url.searchParams.has("new")) {
+          const tunnelInfo = createTunnelServer(port, hostname);
+          tunnelServers.set(tunnelInfo.clientId, tunnelInfo);
+
+          const connTimeout = setTimeout(() => {
+            if (tunnelServers.has(tunnelInfo.clientId)) {
+              tunnelServers.delete(tunnelInfo.clientId);
+              tunnelInfo.cleanup();
+            }
+          }, 5000);
+
+          return new Response(JSON.stringify({
+            url: tunnelInfo.url,
+            port: tunnelInfo.port,
+            id: tunnelInfo.clientId,
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        const targetClientId = clientIdFromHost || pathClientId;
+        if (targetClientId && clients.has(targetClientId)) {
+          const client = clients.get(targetClientId)!;
+
+          if (client.activeRequest) {
+            waitLists.get(targetClientId)!.push({ clientId: targetClientId });
+            return new Response("Too Many Requests", { status: 429 });
+          }
+
+          client.activeRequest = true;
+
+          const cleanup = () => {
+            client.activeRequest = false;
+            const next = waitLists.get(targetClientId)?.shift();
+            if (next) {
+              cleanup();
+            }
+          };
+
+          const onData = (data: Buffer) => {
+            return data;
+          };
+
+          client.socket.once("end", cleanup);
+          client.socket.once("error", cleanup);
+          client.socket.once("close", cleanup);
+
+          return new Response(req.body, {
+            status: 200,
+          });
+        }
+
+        if (clientIdFromHost) {
+          const tunnelInfo = createTunnelServer(port, hostname, clientIdFromHost);
+          tunnelServers.set(tunnelInfo.clientId, tunnelInfo);
+
+          return new Response(JSON.stringify({
+            url: tunnelInfo.url,
+            port: tunnelInfo.port,
+            id: tunnelInfo.clientId,
+          }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        return new Response("Not Found", { status: 404 });
+      },
+      error: (err: Error) => {
+        console.error("Server error:", err);
+        return new Response("Internal Server Error", { status: 500 });
+      },
     });
 
-    server.once("error", (err: Error) => {
-      resume(Effect.fail(new ServerError(err.message)));
+    yield* Effect.async<void, ServerError>((resume) => {
+      if (httpServer) {
+        resume(Effect.succeed(undefined));
+      }
     });
+
+    const tcpServer = net.createServer();
+
+    yield* Effect.addFinalizer(() => Effect.sync(() => tcpServer.close()));
+
+    yield* Effect.async<void, ServerError>((resume) => {
+      tcpServer.listen(port, host, () => {
+        resume(Effect.succeed(undefined));
+      });
+      tcpServer.on("error", (err: Error) => {
+        resume(Effect.fail(new ServerError(err.message)));
+      });
+    });
+
+    while (true) {
+      const socket = yield* Effect.async<net.Socket, ServerError>((resume) => {
+        tcpServer.once("connection", (s) => resume(Effect.succeed(s)));
+        tcpServer.once("error", (err: Error) => resume(Effect.fail(new ServerError(err.message))));
+      });
+
+      yield* handleClientConnection(socket, clients, waitLists);
+    }
   });
 
 export const createServer = (
@@ -85,42 +283,7 @@ export const createServer = (
   host = "0.0.0.0",
 ): Effect.Effect<void, ServerErrors, Scope.Scope> =>
   Effect.gen(function* () {
-    const server = net.createServer();
-
-    yield* Effect.addFinalizer(() => Effect.sync(() => server.close()));
-
-    yield* Effect.async<void, ServerError, never>((resume) => {
-      server.on("listening", () => {
-        server.removeListener("error", onError);
-        resume(Effect.succeed(undefined));
-      });
-
-      const onError = (err: Error) => {
-        server.removeListener("listening", onListen);
-        server.removeListener("error", onError);
-        resume(Effect.fail(new ServerError(err.message)));
-      };
-
-      const onListen = () => {
-        server.removeListener("error", onError);
-        resume(Effect.succeed(undefined));
-      };
-
-      server.on("error", onError);
-      server.listen(port, host);
-    });
-
-    while (true) {
-      const socketResult = yield* acceptConnection(server);
-
-      if (socketResult._tag === "Left") {
-        console.error("Accept error:", socketResult.left.message);
-        continue;
-      }
-
-      const socket = socketResult.right;
-      yield* handleConnection(socket);
-    }
+    yield* createHttpServer(port, host);
   });
 
 export const startServer = (port: number, host?: string): Promise<void> =>

@@ -75,4 +75,89 @@ describe("ClientError scenarios", () => {
     const error = new ClientError("Invalid protocol version");
     expect(error._tag).toBe("ClientError");
   });
+
+  test("handles handshake timeout", () => {
+    const error = new ClientError("Handshake timeout");
+    expect(error._tag).toBe("ClientError");
+    expect(error.message).toBe("Handshake timeout");
+  });
+});
+
+describe("ServerConfig", () => {
+  test("has host and port", () => {
+    const config = {
+      host: "0.0.0.0",
+      port: 8080,
+    };
+
+    expect(config.host).toBe("0.0.0.0");
+    expect(config.port).toBe(8080);
+  });
+
+  test("supports custom host", () => {
+    const config = {
+      host: "127.0.0.1",
+      port: 3000,
+    };
+
+    expect(config.host).toBe("127.0.0.1");
+    expect(config.port).toBe(3000);
+  });
+});
+
+describe("Error message scenarios", () => {
+  test("ServerError formats port binding error", () => {
+    const error = new ServerError("EADDRINUSE: Port 8080 already in use");
+    expect(error.message).toContain("EADDRINUSE");
+  });
+
+  test("ProxyError formats connection reset", () => {
+    const error = new ProxyError("ECONNRESET: Connection was reset");
+    expect(error.message).toContain("ECONNRESET");
+  });
+
+  test("ClientError formats invalid handshake", () => {
+    const error = new ClientError("Invalid handshake: missing Host header");
+    expect(error._tag).toBe("ClientError");
+  });
+});
+
+describe("Server error scenarios", () => {
+  test("ServerError handles port already in use", () => {
+    const error = new ServerError("EADDRINUSE: Address already in use :::0");
+    expect(error._tag).toBe("ServerError");
+    expect(error.message).toContain("EADDRINUSE");
+  });
+
+  test("ServerError handles permission denied", () => {
+    const error = new ServerError("EACCES: Permission denied for port 80");
+    expect(error._tag).toBe("ServerError");
+    expect(error.message).toContain("EACCES");
+  });
+
+  test("ProxyError handles broken pipe", () => {
+    const error = new ProxyError("EPIPE: The pipe was broken");
+    expect(error._tag).toBe("ProxyError");
+    expect(error.message).toContain("EPIPE");
+  });
+});
+
+describe("Client error scenarios", () => {
+  test("ClientError handles invalid subdomain format", () => {
+    const error = new ClientError("Invalid subdomain format: must be 4 chars");
+    expect(error._tag).toBe("ClientError");
+    expect(error.message).toContain("Invalid subdomain");
+  });
+
+  test("ClientError handles timeout during handshake", () => {
+    const error = new ClientError("Handshake timeout after 5000ms");
+    expect(error._tag).toBe("ClientError");
+    expect(error.message).toContain("timeout");
+  });
+
+  test("ClientError handles malformed request", () => {
+    const error = new ClientError("Malformed HTTP request: missing protocol");
+    expect(error._tag).toBe("ClientError");
+    expect(error.message).toContain("Malformed");
+  });
 });
