@@ -96,11 +96,11 @@ jobs:
         run: bun install
 
       - name: Build client binary
-        run: bun run compile --filter localtunnel-client
+        run: bun run compile
         working-directory: ./packages/client
 
       - name: Build server binary
-        run: bun run compile --filter localtunnel-server
+        run: bun run compile
         working-directory: ./packages/server
 
       - name: Bundle client

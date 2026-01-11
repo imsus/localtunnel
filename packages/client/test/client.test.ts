@@ -1,9 +1,9 @@
 import { describe, test, expect } from "bun:test";
 
-import { ConnectionError, TimeoutError, TunnelError, TunnelErrors } from "../src/errors.js";
-import { TunnelConfig } from "../src/service.js";
-import { HeaderHostTransformer } from "../src/HeaderHostTransformer.js";
-import { TunnelInfo, RequestInfo } from "../src/client.js";
+import { ConnectionError, TimeoutError, TunnelError, TunnelErrors } from "../src/errors";
+import { TunnelConfig } from "../src/service";
+import { HeaderHostTransformer } from "../src/HeaderHostTransformer";
+import { TunnelInfo, RequestInfo } from "../src/client";
 import { Schedule } from "effect";
 
 describe("TunnelErrors", () => {

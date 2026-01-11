@@ -212,7 +212,7 @@ const shutdown = async (signal: string) => {
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 
-const { startServer } = await import("../src/server.js");
+const { startServer } = await import("../src/server");
 
 startServer(config.port, config.host).catch((err) => {
   logger.error({ err }, "Failed to start server");

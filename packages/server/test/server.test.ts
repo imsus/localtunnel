@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { ServerError, ProxyError, ClientError, ServerErrors } from "../src/errors.js";
+import { ServerError, ProxyError, ClientError, ServerErrors } from "../src/errors";
 
 describe("ServerErrors", () => {
   test("ServerError has correct tag", () => {
