@@ -1,39 +1,21 @@
 {
   "name": "localtunnel",
-  "description": "Expose localhost to the world",
-  "version": "2.1.0",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/imsus/localtunnel.git"
-  },
-  "author": "Roman Shtylman <shtylman@gmail.com>",
-  "contributors": [
-    "Roman Shtylman <shtylman@gmail.com>",
-    "Gert Hengeveld <gert@hichroma.com>",
-    "Tom Coleman <tom@hichroma.com>"
+  "version": "3.0.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
   ],
-  "main": "./localtunnel.js",
-  "bin": {
-    "lt": "bin/lt.js",
-    "localtunnel-server": "server.js"
-  },
   "scripts": {
-    "test": "mocha --reporter list --timeout 60000 -- *.spec.js"
-  },
-  "engines": {
-    "node": ">=18.0.0"
-  },
-  "dependencies": {
-    "axios": "^1.7.9",
-    "debug": "^4.4.0",
-    "open": "^10.1.0",
-    "yargs": "^17.7.2"
+    "test": "bun test",
+    "test:coverage": "bun test --coverage",
+    "lint": "oxlint .",
+    "fmt": "oxfmt --write .",
+    "check": "oxlint . && oxfmt --check . && bun test",
+    "build": "bun bundle"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "eslint": "^9.39.2",
-    "eslint-config-prettier": "^10.1.8",
-    "mocha": "^11.0.1"
+    "effect": "^3.0.0",
+    "oxlint": "latest",
+    "oxfmt": "latest"
   }
 }

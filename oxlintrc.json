@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "typescript": true,
+    "complexity": "warn",
+    "noConsole": "warn",
+    "noDebugger": "error"
+  }
+}

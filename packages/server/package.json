@@ -1,0 +1,17 @@
+{
+  "name": "localtunnel-server",
+  "version": "3.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "localtunnel-server": "./bin/server.ts"
+  },
+  "scripts": {
+    "build": "bun bundle --outdir dist --format esm",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "effect": "^3.0.0"
+  }
+}
