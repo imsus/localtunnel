@@ -1,5 +1,17 @@
 {
   "name": "localtunnel",
+  "description": "Expose localhost to the world. A modern, Bun-native localtunnel implementation with TypeScript and Effect.ts.",
+  "keywords": [
+    "bun",
+    "localtunnel",
+    "tunnel",
+    "typescript",
+    "monorepo",
+    "effect-ts",
+    "reverse-proxy",
+    "expose-localhost",
+    "dev-tools"
+  ],
   "version": "3.0.0",
   "workspaces": {
     "packages": [
