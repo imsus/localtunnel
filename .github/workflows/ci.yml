@@ -54,7 +54,7 @@ jobs:
       - name: Upload coverage
         uses: actions/upload-artifact@v4
         with:
-          name: coverage
+          name: coverage-ubuntu
           path: coverage/
 
   test-platforms:
@@ -79,8 +79,14 @@ jobs:
       - name: Run tests
         run: bun test
 
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.os }}
+          path: coverage/
+
   build:
-    needs: [lint, test]
+    needs: [lint, test, test-platforms]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -123,7 +129,7 @@ jobs:
           path: packages/server/
 
   merge-coverage:
-    needs: test
+    needs: [test, test-platforms]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -137,8 +143,9 @@ jobs:
       - name: Download coverage
         uses: actions/download-artifact@v4
         with:
-          name: coverage
+          pattern: coverage-*
           path: coverage/
+          merge-multiple: true
 
       - name: Display coverage
         run: cat coverage/lcov.info | head -20
