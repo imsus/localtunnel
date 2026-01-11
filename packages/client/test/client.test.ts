@@ -256,7 +256,7 @@ describe("Tunnel interface", () => {
   });
 
   test("onRequest accepts listener callback", () => {
-    const listener = (info: RequestInfo) => {};
+    const listener = (_info: RequestInfo) => {};
     const tunnel = {
       url: "http://test.localtunnel.me",
       close: async () => {},

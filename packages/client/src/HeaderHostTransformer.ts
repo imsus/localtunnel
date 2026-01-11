@@ -1,4 +1,4 @@
-import type { ReadableStream, WritableStream } from "stream/web";
+import type { ReadableStream } from "stream/web";
 
 export interface HeaderHostTransformerConfig {
   host: string;

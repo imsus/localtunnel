@@ -122,7 +122,7 @@ const handleClientConnection = (
       }),
     );
 
-    socket.on("data", (chunk: Buffer) => {
+    socket.on("data", (_chunk: Buffer) => {
       const client = clients.get(clientId);
       if (!client) return;
 
@@ -167,7 +167,7 @@ const createHttpServer = (
     const httpServer = Bun.serve({
       hostname: host,
       port,
-      fetch: (req, server) => {
+      fetch: (req, _server) => {
         const hostname = req.headers.get("host") || "";
         const url = new URL(req.url, `http://${hostname}`);
         const subdomainMatch = hostname.match(/^([a-z0-9]+)[.]([^:]+)(?::(\d+))?$/);
@@ -178,7 +178,7 @@ const createHttpServer = (
           const tunnelInfo = createTunnelServer(port, hostname);
           tunnelServers.set(tunnelInfo.clientId, tunnelInfo);
 
-          const connTimeout = setTimeout(() => {
+          const _connTimeout = setTimeout(() => {
             if (tunnelServers.has(tunnelInfo.clientId)) {
               tunnelServers.delete(tunnelInfo.clientId);
               tunnelInfo.cleanup();
@@ -212,10 +212,6 @@ const createHttpServer = (
             if (next) {
               cleanup();
             }
-          };
-
-          const onData = (data: Buffer) => {
-            return data;
           };
 
           client.socket.once("end", cleanup);

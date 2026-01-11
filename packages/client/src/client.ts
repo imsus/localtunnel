@@ -1,4 +1,4 @@
-import { Effect, Stream, Fiber, Scope, Schedule, PubSub } from "effect";
+import { Effect, Stream, Schedule, PubSub } from "effect";
 import * as net from "net";
 import * as tls from "tls";
 import { TunnelConfig } from "./service.js";
@@ -240,9 +240,6 @@ const fetchTunnelInfo = (
       catch: (err) => new TunnelError(err.message),
     });
 
-    const remoteHostOrIp = data.ip || config.host;
-    const remotePort = data.port;
-
     return {
       name: data.id,
       url: data.url,
@@ -282,8 +279,6 @@ const openSingleTunnel = (
     const remotePort = info.remote_port;
     const localHost = info.local_host || "localhost";
     const localPort = info.local_port;
-    const localProtocol = info.local_https ? "https" : "http";
-    const allowInvalidCert = info.allow_invalid_cert;
 
     const remote = yield* connect(remoteHostOrIp, remotePort, true);
 
