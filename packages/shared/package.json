@@ -9,6 +9,6 @@
     "compile": "bun build ./src/index.ts --outfile shared --bundle"
   },
   "dependencies": {
-    "effect": "^3.0.0"
+    "effect": "catalog:"
   }
 }

@@ -1,9 +1,19 @@
 {
   "name": "localtunnel",
   "version": "3.0.0",
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": {
+    "packages": ["packages/*"],
+    "catalog": {
+      "effect": "^3.0.0",
+      "picocolors": "^1.1.1",
+      "pino": "^9.0.0"
+    },
+    "catalogs": {
+      "dev": {
+        "pino-pretty": "^11.0.0"
+      }
+    }
+  },
   "type": "module",
   "scripts": {
     "test": "bun test",

@@ -12,7 +12,9 @@
     "test": "bun test"
   },
   "dependencies": {
-    "effect": "^3.0.0",
-    "localtunnel-shared": "*"
+    "effect": "catalog:",
+    "localtunnel-shared": "*",
+    "picocolors": "catalog:",
+    "pino": "catalog:"
   }
 }
