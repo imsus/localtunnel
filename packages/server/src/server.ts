@@ -45,9 +45,7 @@ const parseClientId = (socket: net.Socket): Effect.Effect<string, ClientError> =
 
 const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope> =>
   Effect.gen(function* () {
-    const clientId = yield* parseClientId(socket).pipe(
-      Effect.orElseSucceed(() => generateId())
-    );
+    const clientId = yield* parseClientId(socket).pipe(Effect.orElseSucceed(() => generateId()));
 
     clients.set(clientId, socket);
 
@@ -55,29 +53,31 @@ const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope>
       Effect.sync(() => {
         clients.delete(clientId);
         socket.destroy();
-      })
+      }),
     );
 
     const dataStream = Stream.fromReadable(socket, {
       onError: (err) => new ProxyError(err.message),
     });
 
-    yield* Stream.run(dataStream.pipe(
-      Stream.flatMap((chunk) =>
-        Stream.fromEffect(
-          Effect.forEach(
-            Array.from(clients.entries()),
-            ([id, clientSocket]) => {
-              if (id !== clientId && !clientSocket.destroyed) {
-                return Effect.sync(() => clientSocket.write(chunk));
-              }
-              return Effect.unit;
-            },
-            { concurrency: "unbounded" }
-          )
-        )
-      )
-    ));
+    yield* Stream.run(
+      dataStream.pipe(
+        Stream.flatMap((chunk) =>
+          Stream.fromEffect(
+            Effect.forEach(
+              Array.from(clients.entries()),
+              ([id, clientSocket]) => {
+                if (id !== clientId && !clientSocket.destroyed) {
+                  return Effect.sync(() => clientSocket.write(chunk));
+                }
+                return Effect.unit;
+              },
+              { concurrency: "unbounded" },
+            ),
+          ),
+        ),
+      ),
+    );
   });
 
 const acceptConnections = (server: net.Server): Stream.Stream<net.Socket, ServerError> =>
@@ -91,7 +91,10 @@ const acceptConnections = (server: net.Server): Stream.Stream<net.Socket, Server
     });
   });
 
-export const createServer = (port: number, host = "0.0.0.0"): Effect.Effect<void, ServerErrors, Scope> =>
+export const createServer = (
+  port: number,
+  host = "0.0.0.0",
+): Effect.Effect<void, ServerErrors, Scope> =>
   Effect.gen(function* () {
     const server = net.createServer();
 
@@ -112,9 +115,9 @@ export const createServer = (port: number, host = "0.0.0.0"): Effect.Effect<void
     yield* Stream.run(
       connections.pipe(
         Stream.flatMap((socket) =>
-          Stream.fromEffect(handleConnection(socket), { concurrency: "unbounded" })
-        )
-      )
+          Stream.fromEffect(handleConnection(socket), { concurrency: "unbounded" }),
+        ),
+      ),
     );
   });
 

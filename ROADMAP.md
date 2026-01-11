@@ -64,9 +64,7 @@ bun --version
   "name": "localtunnel",
   "version": "3.0.0",
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": ["packages/*"],
   "scripts": {
     "test": "bun test",
     "test:coverage": "bun test --coverage",
@@ -226,44 +224,48 @@ Effect.fork(effect)
 ```typescript
 // packages/client/src/errors.ts
 export class ConnectionError {
-  readonly _tag = 'ConnectionError'
-  constructor(readonly host: string, readonly port: number, readonly reason: string) {}
+  readonly _tag = "ConnectionError";
+  constructor(
+    readonly host: string,
+    readonly port: number,
+    readonly reason: string,
+  ) {}
 }
 
 export class TimeoutError {
-  readonly _tag = 'TimeoutError'
+  readonly _tag = "TimeoutError";
   constructor(readonly duration: number) {}
 }
 
 export class TunnelError {
-  readonly _tag = 'TunnelError'
+  readonly _tag = "TunnelError";
   constructor(readonly message: string) {}
 }
 
-export type TunnelErrors = ConnectionError | TimeoutError | TunnelError
+export type TunnelErrors = ConnectionError | TimeoutError | TunnelError;
 ```
 
 ### Services Layer
 
 ```typescript
 // packages/client/src/service.ts
-import { Effect, Layer, Context } from 'effect'
+import { Effect, Layer, Context } from "effect";
 
 export interface TunnelConfig {
-  host: string
-  subdomain?: string
-  localPort: number
-  localHost?: string
-  allowInvalidCert?: boolean
+  host: string;
+  subdomain?: string;
+  localPort: number;
+  localHost?: string;
+  allowInvalidCert?: boolean;
 }
 
 export interface TunnelService {
-  openTunnel(config: TunnelConfig): Effect.Effect<{ url: string }, TunnelErrors, Scope>
-  closeTunnel(url: string): Effect.Effect<void, never, Scope>
+  openTunnel(config: TunnelConfig): Effect.Effect<{ url: string }, TunnelErrors, Scope>;
+  closeTunnel(url: string): Effect.Effect<void, never, Scope>;
 }
 
-export const TunnelConfig = Context.GenericTag<TunnelConfig>('TunnelConfig')
-export const TunnelService = Context.GenericTag<TunnelService>('TunnelService')
+export const TunnelConfig = Context.GenericTag<TunnelConfig>("TunnelConfig");
+export const TunnelService = Context.GenericTag<TunnelService>("TunnelService");
 ```
 
 ### Client Implementation with Effect
@@ -282,20 +284,20 @@ export const openTunnel = (port: number, opts?: Options): Effect.Effect<Tunnel, 
   Effect.withScope((scope) =>
     Effect.gen(function* {
       const config = yield* getConfig(opts)
-      
+
       // Connect to tunnel server
       const socket = yield* connect(config.host, scope)
-      
+
       // Request tunnel
       const response = yield* requestTunnel(socket, config)
-      
+
       // Establish local connection
       const localSocket = yield* connectLocal(config.localPort, scope)
-      
+
       // Pipe data between sockets
       yield* Effect.fork(scope, pipeData(socket, localSocket))
       yield* Effect.fork(scope, pipeData(localSocket, socket))
-      
+
       return {
         url: response.url,
         close: Effect.sync(() => {
@@ -324,17 +326,17 @@ export const createServer = (port: number): Effect.Effect<void, never, Scope> =>
   Effect.withScope((scope) =>
     Effect.gen(function* {
       const server = net.createServer()
-      
+
       yield* Effect.addFinalizer(() => Effect.sync(() => server.close()))
       yield* Effect.attachFinalizer(scope, Effect.sync(() => server.close()))
-      
+
       yield* Effect.async<void>((resume) => {
         server.listen(port, () => resume(Effect.unit))
       })
-      
+
       // Accept connections with fiber-based concurrency
       const connections = yield* acceptConnections(server)
-      
+
       yield* Effect.forEach(connections, handleConnection, {
         concurrency: 'unbounded'
       })
@@ -345,10 +347,10 @@ const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope>
   Effect.withScope((scope) =>
     Effect.gen(function* {
       const clientId = yield* parseClientId(socket)
-      
+
       // Register client in map
       yield* registerClient(clientId, socket, scope)
-      
+
       // Handle proxy data
       const dataStream = Stream.fromReadable(socket)
       yield* Stream.run(dataStream.pipe(
@@ -363,55 +365,58 @@ const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope>
 
 ```typescript
 // packages/client/test/client.test.ts
-import { test, expect, describe } from 'bun:test'
-import { Effect, Layer, Scope } from 'effect'
-import { openTunnel } from '../src/client.ts'
+import { test, expect, describe } from "bun:test";
+import { Effect, Layer, Scope } from "effect";
+import { openTunnel } from "../src/client.ts";
 
 // Mock service for testing
 const MockTunnelService = Layer.succeed(TunnelService, {
-  openTunnel: () => Effect.succeed({ url: 'http://test.local' }),
-  closeTunnel: () => Effect.unit
-})
+  openTunnel: () => Effect.succeed({ url: "http://test.local" }),
+  closeTunnel: () => Effect.unit,
+});
 
-describe('localtunnel', () => {
-  test('creates tunnel successfully', async () => {
+describe("localtunnel", () => {
+  test("creates tunnel successfully", async () => {
     const tunnel = await Effect.provide(
       openTunnel(3000),
-      Layer.merge(MockTunnelService, LiveScope)
-    )
-    
-    expect(tunnel.url).toBeDefined()
-    expect(tunnel.url.startsWith('http://')).toBe(true)
-  })
+      Layer.merge(MockTunnelService, LiveScope),
+    );
 
-  test('handles connection errors', async () => {
-    const mockError = new ConnectionError('localhost', 9999, 'ECONNREFUSED')
-    
+    expect(tunnel.url).toBeDefined();
+    expect(tunnel.url.startsWith("http://")).toBe(true);
+  });
+
+  test("handles connection errors", async () => {
+    const mockError = new ConnectionError("localhost", 9999, "ECONNREFUSED");
+
     const MockFailingService = Layer.succeed(TunnelService, {
-      openTunnel: () => Effect.fail(mockError)
-    })
-    
-    const result = await Effect.runPromise(
-      Effect.provide(openTunnel(3000), MockFailingService)
-    ).then(() => 'success').catch((e) => 'error')
-    
-    expect(result).toBe('error')
-  })
-})
+      openTunnel: () => Effect.fail(mockError),
+    });
+
+    const result = await Effect.runPromise(Effect.provide(openTunnel(3000), MockFailingService))
+      .then(() => "success")
+      .catch((e) => "error");
+
+    expect(result).toBe("error");
+  });
+});
 ```
 
 ## 4. Dependencies Strategy
 
 ### Remove (use native Bun APIs or Effect.ts)
+
 - `axios` → native `fetch` or Effect's `HttpClient`
 - `yargs` → native argument parsing
 - `open` → `Bun.spawn` with Effect
 - `debug` → Effect's `Logger` or native `console`
 
 ### Keep (if needed)
+
 - None - minimize dependencies
 
 ### Add
+
 - `effect` for FRP, resource management, error handling
 - `oxlint` for linting (Bun doesn't have built-in linter)
 - `oxfmt` for formatting
@@ -482,6 +487,7 @@ jobs:
 ## 7. Tasks (with Effect.ts)
 
 ### Client Tasks
+
 - [ ] Create `packages/client` directory
 - [ ] Set up TypeScript config
 - [ ] Define error types (`TunnelErrors`)
@@ -494,6 +500,7 @@ jobs:
 - [ ] Write integration tests
 
 ### Server Tasks
+
 - [ ] Create `packages/server` directory
 - [ ] Set up TypeScript config
 - [ ] Define server error types
@@ -511,24 +518,28 @@ jobs:
 **Goal:** Performance optimization, reliability improvements, better UX
 
 ## Performance
+
 - [ ] Connection pooling optimization with Effect pool
 - [ ] Memory usage reduction with proper Scope cleanup
 - [ ] Latency minimization
 - [ ] Benchmark suite with Effect metrics
 
 ## Reliability
+
 - [ ] Retry logic improvements with `Effect.retryPolicy`
 - [ ] Better error handling with typed errors
 - [ ] Graceful degradation with `Effect.catch`
 - [ ] Health checks with Effect services
 
 ## UX Improvements
+
 - [ ] Better CLI output
 - [ ] Progress indicators with Effect progress
 - [ ] Verbose mode with Effect logging
 - [ ] Configuration file support
 
 ## Documentation
+
 - [ ] API documentation (Effect patterns)
 - [ ] Architecture docs (services, layers, scopes)
 - [ ] Contribution guide
@@ -540,17 +551,20 @@ jobs:
 **Goal:** New features, plugin system, extensibility
 
 ## Features
+
 - [ ] Custom subdomain patterns
 - [ ] Rate limiting with Effect semaphore
 - [ ] Authentication options
 - [ ] IP allowlisting
 
 ## Extensibility
+
 - [ ] Plugin system with Effect layers
 - [ ] Middleware support
 - [ ] Custom request handlers
 
 ## Observability
+
 - [ ] Metrics endpoint with Effect
 - [ ] Tracing support
 - [ ] Structured logging with Effect Logger

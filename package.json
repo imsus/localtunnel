@@ -1,10 +1,10 @@
 {
   "name": "localtunnel",
   "version": "3.0.0",
-  "type": "module",
   "workspaces": [
     "packages/*"
   ],
+  "type": "module",
   "scripts": {
     "test": "bun test",
     "test:coverage": "bun test --coverage",
@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "effect": "^3.0.0",
-    "oxlint": "latest",
-    "oxfmt": "latest"
+    "oxfmt": "latest",
+    "oxlint": "latest"
   }
 }

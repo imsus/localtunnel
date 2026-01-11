@@ -9,13 +9,19 @@ export interface Tunnel {
   close: () => Promise<void>;
 }
 
-const connect = (host: string, port: number, useTls: boolean): Effect.Effect<net.Socket, ConnectionError> =>
+const connect = (
+  host: string,
+  port: number,
+  useTls: boolean,
+): Effect.Effect<net.Socket, ConnectionError> =>
   Effect.gen(function* () {
     const socket = useTls ? tls.connect({ host, port }) : net.connect({ host, port });
 
     const connected = yield* Effect.async<boolean, ConnectionError>((resume) => {
       socket.on("connect", () => resume(Effect.succeed(true)));
-      socket.on("error", (err) => resume(Effect.fail(new ConnectionError(host, port, err.message))));
+      socket.on("error", (err) =>
+        resume(Effect.fail(new ConnectionError(host, port, err.message))),
+      );
     });
 
     if (!connected) {
@@ -27,12 +33,10 @@ const connect = (host: string, port: number, useTls: boolean): Effect.Effect<net
 
 const requestTunnel = (
   socket: net.Socket,
-  config: TunnelConfig
+  config: TunnelConfig,
 ): Effect.Effect<{ url: string }, TunnelErrors> =>
   Effect.gen(function* () {
-    const requestPath = config.subdomain
-      ? `/?subdomain=${config.subdomain}`
-      : "/";
+    const requestPath = config.subdomain ? `/?subdomain=${config.subdomain}` : "/";
 
     const headers = [
       `GET ${requestPath} HTTP/1.1`,
@@ -95,7 +99,7 @@ const connectLocal = (
     key?: string;
     ca?: string;
     allowInvalidCert?: boolean;
-  }
+  },
 ): Effect.Effect<net.Socket, ConnectionError> =>
   Effect.gen(function* () {
     const targetHost = host ?? "localhost";
@@ -114,7 +118,9 @@ const connectLocal = (
 
     const connected = yield* Effect.async<boolean, ConnectionError>((resume) => {
       socket.on("connect", () => resume(Effect.succeed(true)));
-      socket.on("error", (err) => resume(Effect.fail(new ConnectionError(targetHost, port, err.message))));
+      socket.on("error", (err) =>
+        resume(Effect.fail(new ConnectionError(targetHost, port, err.message))),
+      );
     });
 
     if (!connected) {
@@ -126,7 +132,7 @@ const connectLocal = (
 
 export const openTunnel = (
   port: number,
-  opts?: Partial<TunnelConfig>
+  opts?: Partial<TunnelConfig>,
 ): Effect.Effect<Tunnel, TunnelErrors> =>
   Effect.gen(function* () {
     const config: TunnelConfig = {
@@ -138,12 +144,17 @@ export const openTunnel = (
     const serverSocket = yield* connect(config.host, 443, true);
     const { url } = yield* requestTunnel(serverSocket, config);
 
-    const localSocket = yield* connectLocal(config.localPort, config.localHost, config.localHttps ?? false, {
-      cert: config.localCert,
-      key: config.localKey,
-      ca: config.localCa,
-      allowInvalidCert: config.allowInvalidCert,
-    });
+    const localSocket = yield* connectLocal(
+      config.localPort,
+      config.localHost,
+      config.localHttps ?? false,
+      {
+        cert: config.localCert,
+        key: config.localKey,
+        ca: config.localCa,
+        allowInvalidCert: config.allowInvalidCert,
+      },
+    );
 
     pipeData(serverSocket, localSocket);
     pipeData(localSocket, serverSocket);
@@ -152,7 +163,7 @@ export const openTunnel = (
       url,
       close: () =>
         Effect.runPromise(
-          Effect.all([Effect.sync(() => serverSocket.end()), Effect.sync(() => localSocket.end())])
+          Effect.all([Effect.sync(() => serverSocket.end()), Effect.sync(() => localSocket.end())]),
         ),
     };
   });
@@ -161,8 +172,6 @@ export const openTunnelWithRetry = (
   port: number,
   opts?: Partial<TunnelConfig>,
   retries = 3,
-  delay = 1000
+  delay = 1000,
 ): Effect.Effect<Tunnel, TunnelErrors> =>
-  openTunnel(port, opts).pipe(
-    Effect.retry({ times: retries, delay })
-  );
+  openTunnel(port, opts).pipe(Effect.retry({ times: retries, delay }));

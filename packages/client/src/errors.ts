@@ -3,7 +3,7 @@ export class ConnectionError {
   constructor(
     readonly host: string,
     readonly port: number,
-    readonly reason: string
+    readonly reason: string,
   ) {}
 }
 
