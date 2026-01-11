@@ -16,7 +16,7 @@ const generateId = (): string => {
 };
 
 const parseClientId = (socket: net.Socket): Effect.Effect<string, ClientError> =>
-  Effect.async<string, ClientError>((resume) => {
+  Effect.async((resume) => {
     let data = "";
 
     const onData = (chunk: Buffer) => {
@@ -69,17 +69,22 @@ const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope.
     });
   });
 
-const acceptConnection = (
-  server: net.Server,
-): Effect.Effect<net.Socket, ServerError, never> =>
-  Effect.async<net.Socket, ServerError>((resume) => {
-    server.once("connection", (socket) => {
+const acceptConnection = (server: net.Server): Effect.Effect<net.Socket, ServerError> =>
+  Effect.async((resume) => {
+    const onConnection = (socket: net.Socket) => {
+      server.removeListener("connection", onConnection);
+      server.removeListener("error", onError);
       resume(Effect.succeed(socket));
-    });
+    };
 
-    server.once("error", (err) => {
+    const onError = (err: Error) => {
+      server.removeListener("connection", onConnection);
+      server.removeListener("error", onError);
       resume(Effect.fail(new ServerError(err.message)));
-    });
+    };
+
+    server.on("connection", onConnection);
+    server.on("error", onError);
   });
 
 export const createServer = (
@@ -91,14 +96,22 @@ export const createServer = (
 
     yield* Effect.addFinalizer(() => Effect.sync(() => server.close()));
 
-    yield* Effect.async<void, ServerError>((resume) => {
-      server.listen(port, host, () => {
+    yield* Effect.async((resume) => {
+      const onListen = () => {
+        server.removeListener("error", onError);
         resume(Effect.succeed(undefined));
-      });
+      };
 
-      server.on("error", (err) => {
+      const onError = (err: Error) => {
+        server.removeListener("listening", onListen);
+        server.removeListener("error", onError);
         resume(Effect.fail(new ServerError(err.message)));
-      });
+      };
+
+      server.on("listening", onListen);
+      server.on("error", onError);
+
+      server.listen(port, host);
     });
 
     while (true) {
