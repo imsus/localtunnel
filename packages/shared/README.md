@@ -1,17 +1,27 @@
 # @localtunnel/shared
 
-Shared utilities for localtunnel packages.
+[![npm version](https://img.shields.io/npm/v/localtunnel-shared)](https://npmjs.com/package/localtunnel-shared)
+[![License](https://img.shields.io/npm/l/localtunnel-shared)](../../LICENSE)
+
+Shared utilities for localtunnel packages. Provides environment configuration, .env file loading, and configuration helpers.
+
+> **Note:** This package is primarily for internal use by `@localtunnel/client` and `@localtunnel/server`. It's published separately for convenience but isn't typically installed directly by users.
 
 ## Features
 
 - Environment file loading (.env support)
 - Client configuration from args and environment variables
 - Server configuration from args and environment variables
+- Configuration precedence: CLI args > Environment variables > Defaults
 
 ## Installation
 
 ```bash
+# With Bun (typically installed automatically)
 bun add @localtunnel/shared
+
+# With npm
+npm install @localtunnel/shared
 ```
 
 ## Usage
@@ -49,29 +59,27 @@ const config = getServerConfig({
 });
 ```
 
-## Environment Variables
+## Client Environment Variables
 
-### Client
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LT_PORT` | Local port to tunnel | - |
+| `LT_SUBDOMAIN` | Request specific subdomain | - |
+| `LT_HOST` | Tunnel server hostname | `localtunnel.me` |
+| `LT_LOCAL_HOST` | Proxy to different hostname | - |
+| `LT_LOCAL_HTTPS` | Enable HTTPS to local server | `false` |
+| `LT_LOCAL_CERT` | Path to certificate | - |
+| `LT_LOCAL_KEY` | Path to key | - |
+| `LT_LOCAL_CA` | Path to CA | - |
+| `LT_ALLOW_INVALID_CERT` | Skip cert validation | `false` |
+| `LT_TLS` | Enable TLS | `true` |
 
-| Variable                | Description                  | Default          |
-| ----------------------- | ---------------------------- | ---------------- |
-| `LT_PORT`               | Local port to tunnel         | -                |
-| `LT_SUBDOMAIN`          | Request specific subdomain   | -                |
-| `LT_HOST`               | Tunnel server hostname       | `localtunnel.me` |
-| `LT_LOCAL_HOST`         | Proxy to different hostname  | -                |
-| `LT_LOCAL_HTTPS`        | Enable HTTPS to local server | `false`          |
-| `LT_LOCAL_CERT`         | Path to certificate          | -                |
-| `LT_LOCAL_KEY`          | Path to key                  | -                |
-| `LT_LOCAL_CA`           | Path to CA                   | -                |
-| `LT_ALLOW_INVALID_CERT` | Skip cert validation         | `false`          |
-| `LT_TLS`                | Enable TLS                   | `true`           |
+## Server Environment Variables
 
-### Server
-
-| Variable         | Description       | Default   |
-| ---------------- | ----------------- | --------- |
-| `LT_SERVER_HOST` | Host to bind to   | `0.0.0.0` |
-| `LT_SERVER_PORT` | Port to listen on | `8080`    |
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `LT_SERVER_HOST` | Host to bind to | `0.0.0.0` |
+| `LT_SERVER_PORT` | Port to listen on | `8080` |
 
 ## API
 
@@ -114,3 +122,9 @@ interface ServerArgs {
   port?: number;
 }
 ```
+
+## See Also
+
+- [@localtunnel/client](../client/README.md) - Tunnel client package
+- [@localtunnel/server](../server/README.md) - Tunnel server package
+- [Main README](../../README.md) - Project overview
