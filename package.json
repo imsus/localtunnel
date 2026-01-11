@@ -11,12 +11,7 @@
     "lint": "oxlint .",
     "fmt": "oxfmt --write .",
     "check": "oxlint . && oxfmt --check . && bun test",
-    "build": "bun bundle",
-    "build:client": "cd packages/client && bun run build",
-    "build:server": "cd packages/server && bun run build",
-    "compile:client": "cd packages/client && bun run compile",
-    "compile:server": "cd packages/server && bun run compile",
-    "compile": "bun run compile:client && bun run compile:server"
+    "compile": "bun run --filter '*' compile"
   },
   "devDependencies": {
     "@types/bun": "latest",
