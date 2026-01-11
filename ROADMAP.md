@@ -63,12 +63,12 @@ Major rewrite to modernize the codebase, improve maintainability, and prepare fo
 
 ## Architecture Decisions (Deviated from Original Plan)
 
-| Original Plan | Current Implementation | Reason |
-|---------------|------------------------|--------|
-| Separate `cluster.ts` | Integrated into `client.ts` | Simpler codebase |
-| Custom TCP proxy | Bun.serve | Native Bun API |
-| Complex service layer | Simple config functions | Reduced complexity |
-| Connection pooling | Single connection | Sufficient for most cases |
+| Original Plan         | Current Implementation      | Reason                    |
+| --------------------- | --------------------------- | ------------------------- |
+| Separate `cluster.ts` | Integrated into `client.ts` | Simpler codebase          |
+| Custom TCP proxy      | Bun.serve                   | Native Bun API            |
+| Complex service layer | Simple config functions     | Reduced complexity        |
+| Connection pooling    | Single connection           | Sufficient for most cases |
 
 ---
 
