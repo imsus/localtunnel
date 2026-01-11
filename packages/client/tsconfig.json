@@ -8,12 +8,11 @@
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "isolatedModules": true,
-    "resolveJsonModule": true,
+    "composite": true,
     "declaration": true,
     "declarationMap": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "emitDeclarationOnly": true
   },
   "include": ["src/**/*.ts", "bin/**/*.ts"],
   "exclude": ["node_modules", "dist"]

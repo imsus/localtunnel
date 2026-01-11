@@ -19,6 +19,8 @@
     "compile": "bun run compile:client && bun run compile:server"
   },
   "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^22.0.0",
     "effect": "^3.0.0",
     "oxfmt": "latest",
     "oxlint": "latest"
