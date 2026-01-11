@@ -21,6 +21,7 @@
       },
       "dependencies": {
         "effect": "^3.0.0",
+        "localtunnel-shared": "*",
       },
     },
     "packages/server": {
@@ -29,6 +30,14 @@
       "bin": {
         "localtunnel-server": "./bin/server.ts",
       },
+      "dependencies": {
+        "effect": "^3.0.0",
+        "localtunnel-shared": "*",
+      },
+    },
+    "packages/shared": {
+      "name": "localtunnel-shared",
+      "version": "3.0.0",
       "dependencies": {
         "effect": "^3.0.0",
       },
@@ -82,6 +91,8 @@
     "localtunnel-client": ["localtunnel-client@workspace:packages/client"],
 
     "localtunnel-server": ["localtunnel-server@workspace:packages/server"],
+
+    "localtunnel-shared": ["localtunnel-shared@workspace:packages/shared"],
 
     "oxfmt": ["oxfmt@0.23.0", "", { "dependencies": { "tinypool": "2.0.0" }, "optionalDependencies": { "@oxfmt/darwin-arm64": "0.23.0", "@oxfmt/darwin-x64": "0.23.0", "@oxfmt/linux-arm64-gnu": "0.23.0", "@oxfmt/linux-arm64-musl": "0.23.0", "@oxfmt/linux-x64-gnu": "0.23.0", "@oxfmt/linux-x64-musl": "0.23.0", "@oxfmt/win32-arm64": "0.23.0", "@oxfmt/win32-x64": "0.23.0" }, "bin": { "oxfmt": "bin/oxfmt" } }, "sha512-dh4rlNBua93aVf2ZaDecbQxVLMnUUTvDi1K1fdvBdontQeEf6K22Z1KQg5QKl2D9aNFeFph+wOVwcjjYUIO6Mw=="],
 

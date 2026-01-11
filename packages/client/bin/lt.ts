@@ -1,50 +1,55 @@
 #!/usr/bin/env bun
 import { Effect } from "effect";
 import { openTunnel } from "../src/client";
+import { loadEnvFile, getClientConfig } from "localtunnel-shared/env";
+
+// Load .env file if it exists
+await loadEnvFile();
 
 interface Args {
   port: number;
   subdomain?: string;
   host?: string;
+  serverPort?: number;
   localHost?: string;
   localHttps: boolean;
   localCert?: string;
   localKey?: string;
   localCa?: string;
   allowInvalidCert: boolean;
+  tls: boolean;
   help: boolean;
 }
 
-// Load .env file if it exists
-try {
-  const envPath = ".env";
-  if (await Bun.file(envPath).exists()) {
-    const envFile = await Bun.file(envPath).text();
-    for (const line of envFile.split("\n")) {
-      const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith("#")) {
-        const [key, ...valueParts] = trimmed.split("=");
-        if (key && valueParts.length) {
-          process.env[key] = valueParts.join("=");
-        }
-      }
-    }
-  }
-} catch {
-  // .env file not found or parse error, use defaults
+const args = Bun.argv.slice(2);
+
+interface Args {
+  port: number;
+  subdomain?: string;
+  host?: string;
+  serverPort?: number;
+  localHost?: string;
+  localHttps: boolean;
+  localCert?: string;
+  localKey?: string;
+  localCa?: string;
+  allowInvalidCert: boolean;
+  tls: boolean;
+  help: boolean;
 }
 
-const args = Bun.argv.slice(2);
-const parsedArgs: Args = {
+const cliArgs: Args = {
   port: 0,
-  subdomain: process.env.LT_SUBDOMAIN,
-  host: process.env.LT_HOST || "localtunnel.me",
-  localHost: process.env.LT_LOCAL_HOST,
-  localHttps: process.env.LT_LOCAL_HTTPS === "true",
-  localCert: process.env.LT_LOCAL_CERT,
-  localKey: process.env.LT_LOCAL_KEY,
-  localCa: process.env.LT_LOCAL_CA,
-  allowInvalidCert: process.env.LT_ALLOW_INVALID_CERT === "true",
+  subdomain: undefined,
+  host: undefined,
+  serverPort: undefined,
+  localHost: undefined,
+  localHttps: false,
+  localCert: undefined,
+  localKey: undefined,
+  localCa: undefined,
+  allowInvalidCert: false,
+  tls: true,
   help: false,
 };
 
@@ -53,36 +58,41 @@ for (let i = 0; i < args.length; i++) {
   const next = args[i + 1];
 
   if (arg === "--port" && next) {
-    parsedArgs.port = parseInt(next, 10);
+    cliArgs.port = parseInt(next, 10);
     i++;
   } else if (arg === "--subdomain" && next) {
-    parsedArgs.subdomain = next;
+    cliArgs.subdomain = next;
     i++;
   } else if (arg === "--host" && next) {
-    parsedArgs.host = next;
+    cliArgs.host = next;
+    i++;
+  } else if (arg === "--server-port" && next) {
+    cliArgs.serverPort = parseInt(next, 10);
     i++;
   } else if (arg === "--local-host" && next) {
-    parsedArgs.localHost = next;
+    cliArgs.localHost = next;
     i++;
   } else if (arg === "--local-https") {
-    parsedArgs.localHttps = true;
+    cliArgs.localHttps = true;
   } else if (arg === "--local-cert" && next) {
-    parsedArgs.localCert = next;
+    cliArgs.localCert = next;
     i++;
   } else if (arg === "--local-key" && next) {
-    parsedArgs.localKey = next;
+    cliArgs.localKey = next;
     i++;
   } else if (arg === "--local-ca" && next) {
-    parsedArgs.localCa = next;
+    cliArgs.localCa = next;
     i++;
   } else if (arg === "--allow-invalid-cert") {
-    parsedArgs.allowInvalidCert = true;
+    cliArgs.allowInvalidCert = true;
+  } else if (arg === "--no-tls") {
+    cliArgs.tls = false;
   } else if (arg === "--help" || arg === "-h") {
-    parsedArgs.help = true;
+    cliArgs.help = true;
   }
 }
 
-if (parsedArgs.help) {
+if (cliArgs.help) {
   console.log(`
 localtunnel - Expose localhost to the world
 
@@ -91,7 +101,9 @@ Usage: lt [options]
 Options:
   --port <n>              Local port to tunnel (required)
   --subdomain <name>      Request a specific subdomain
-  --host <url>            Tunnel server URL (default: localtunnel.me)
+  --host <url>            Tunnel server hostname (default: localtunnel.me)
+  --server-port <n>       Tunnel server port (default: 443)
+  --no-tls               Disable TLS for local testing
   --local-host <name>     Proxy to a different hostname
   --local-https          Enable HTTPS to local server
   --local-cert <path>     Path to certificate PEM file
@@ -103,27 +115,32 @@ Options:
 Examples:
   lt --port 3000
   lt --port 8000 --subdomain myapp
+  lt --port 8000 --host 127.0.0.1 --server-port 8000 --no-tls
   lt --port 443 --local-https
 `);
   process.exit(0);
 }
 
-if (!parsedArgs.port) {
+if (!cliArgs.port) {
   console.error("Error: --port is required");
   console.error("Use --help for usage information");
   process.exit(1);
 }
 
+const config = getClientConfig(cliArgs);
+
 const tunnel = await Effect.runPromise(
-  openTunnel(parsedArgs.port, {
-    subdomain: parsedArgs.subdomain,
-    host: parsedArgs.host,
-    localHost: parsedArgs.localHost,
-    localHttps: parsedArgs.localHttps,
-    localCert: parsedArgs.localCert,
-    localKey: parsedArgs.localKey,
-    localCa: parsedArgs.localCa,
-    allowInvalidCert: parsedArgs.allowInvalidCert,
+  openTunnel(config.port, {
+    subdomain: config.subdomain,
+    host: config.host,
+    port: config.serverPort,
+    tls: config.tls,
+    localHost: config.localHost,
+    localHttps: config.localHttps,
+    localCert: config.localCert,
+    localKey: config.localKey,
+    localCa: config.localCa,
+    allowInvalidCert: config.allowInvalidCert,
   }),
 );
 

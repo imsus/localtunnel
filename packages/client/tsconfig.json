@@ -12,7 +12,11 @@
     "isolatedModules": true,
     "resolveJsonModule": true,
     "types": ["bun"],
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "localtunnel-shared/*": ["../shared/src/*"]
+    }
   },
   "include": ["src/**/*.ts", "bin/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules", "dist"]

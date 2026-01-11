@@ -11,8 +11,12 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "localtunnel-shared/*": ["packages/shared/src/*"]
+    }
   },
-  "include": ["packages/*/src/**/*.ts", "packages/*/bin/**/*.ts", "packages/*/test/**/*.ts"],
+  "include": ["packages/*/src/**/*.ts", "packages/*/bin/**/*.ts", "packages/*/test/**/*.ts", "packages/shared/src/**/*.ts"],
   "exclude": ["node_modules", "dist"]
 }

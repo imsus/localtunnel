@@ -164,7 +164,7 @@ export const openTunnel = (
       ...opts,
     };
 
-    const serverSocket = yield* connect(config.host, 443, true);
+    const serverSocket = yield* connect(config.host, config.port || 443, config.tls ?? true);
     const { url } = yield* requestTunnel(serverSocket, config);
 
     const localSocket = yield* connectLocal(

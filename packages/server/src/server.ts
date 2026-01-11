@@ -165,7 +165,7 @@ const createHttpServer = (
     );
 
     const httpServer = Bun.serve({
-      hostname: host,
+      // hostname: host, // Let Bun default to all interfaces
       port,
       fetch: (req, _server) => {
         const hostname = req.headers.get("host") || "";
@@ -185,17 +185,10 @@ const createHttpServer = (
             }
           }, 5000);
 
-          return new Response(
-            JSON.stringify({
-              url: tunnelInfo.url,
-              port: tunnelInfo.port,
-              id: tunnelInfo.clientId,
-            }),
-            {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
+          return new Response(`url=${tunnelInfo.url}\n`, {
+            status: 200,
+            headers: { "Content-Type": "text/plain" },
+          });
         }
 
         const targetClientId = clientIdFromHost || pathClientId;
@@ -230,17 +223,10 @@ const createHttpServer = (
           const tunnelInfo = createTunnelServer(port, hostname, clientIdFromHost);
           tunnelServers.set(tunnelInfo.clientId, tunnelInfo);
 
-          return new Response(
-            JSON.stringify({
-              url: tunnelInfo.url,
-              port: tunnelInfo.port,
-              id: tunnelInfo.clientId,
-            }),
-            {
-              status: 200,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
+          return new Response(`url=${tunnelInfo.url}\n`, {
+            status: 200,
+            headers: { "Content-Type": "text/plain" },
+          });
         }
 
         return new Response("Not Found", { status: 404 });
@@ -262,7 +248,7 @@ const createHttpServer = (
     yield* Effect.addFinalizer(() => Effect.sync(() => tcpServer.close()));
 
     yield* Effect.async<void, ServerError>((resume) => {
-      tcpServer.listen(port, host, () => {
+      tcpServer.listen(0, host, () => {
         resume(Effect.succeed(undefined));
       });
       tcpServer.on("error", (err: Error) => {

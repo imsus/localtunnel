@@ -1,0 +1,44 @@
+// src/env.ts
+async function loadEnvFile(envPath = ".env") {
+  try {
+    if (await Bun.file(envPath).exists()) {
+      const envFile = await Bun.file(envPath).text();
+      for (const line of envFile.split(`
+`)) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#")) {
+          const [key, ...valueParts] = trimmed.split("=");
+          if (key && valueParts.length) {
+            process.env[key] = valueParts.join("=");
+          }
+        }
+      }
+    }
+  } catch {}
+}
+function getClientConfig(args = {}) {
+  return {
+    port: args.port ?? 0,
+    subdomain: args.subdomain ?? process.env.LT_SUBDOMAIN,
+    host: args.host ?? process.env.LT_HOST ?? "localtunnel.me",
+    serverPort: args.serverPort,
+    localHost: args.localHost ?? process.env.LT_LOCAL_HOST,
+    localHttps: args.localHttps ?? process.env.LT_LOCAL_HTTPS === "true",
+    localCert: args.localCert ?? process.env.LT_LOCAL_CERT,
+    localKey: args.localKey ?? process.env.LT_LOCAL_KEY,
+    localCa: args.localCa ?? process.env.LT_LOCAL_CA,
+    allowInvalidCert: args.allowInvalidCert ?? process.env.LT_ALLOW_INVALID_CERT === "true",
+    tls: args.tls ?? process.env.LT_TLS !== "false"
+  };
+}
+function getServerConfig(args = {}) {
+  return {
+    host: args.host ?? process.env.LT_SERVER_HOST ?? "0.0.0.0",
+    port: args.port ?? parseInt(process.env.LT_SERVER_PORT ?? "8080", 10)
+  };
+}
+export {
+  loadEnvFile,
+  getServerConfig,
+  getClientConfig
+};

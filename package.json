@@ -7,12 +7,16 @@
   "type": "module",
   "scripts": {
     "test": "bun test",
+    "test:e2e": "bun test test/e2e.test.ts",
     "test:coverage": "bun test --coverage",
     "lint": "oxlint .",
     "fmt": "oxfmt --write .",
     "check": "oxlint . && oxfmt --check . && bun test",
     "typecheck": "npx tsc --noEmit",
-    "compile": "bun run --filter '*' compile"
+    "compile": "bun run --filter '*' compile",
+    "link": "bun run compile && (cd packages/client && bun link) && (cd packages/server && bun link)",
+    "unlink": "(cd packages/client && bun unlink) && (cd packages/server && bun unlink)",
+    "install:cli": "chmod +x scripts/install-cli.sh && ./scripts/install-cli.sh"
   },
   "devDependencies": {
     "@types/bun": "latest",

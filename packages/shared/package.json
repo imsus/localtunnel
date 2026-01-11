@@ -1,0 +1,14 @@
+{
+  "name": "localtunnel-shared",
+  "version": "3.0.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "bun bundle --outdir dist --format esm",
+    "compile": "bun build ./src/index.ts --outfile shared --bundle"
+  },
+  "dependencies": {
+    "effect": "^3.0.0"
+  }
+}

@@ -9,7 +9,47 @@ localtunnel/
 ├── packages/
 │   ├── client/     # Tunnel client - connects to server and forwards traffic
 │   └── server/     # Tunnel server - manages tunnels and proxies requests
+│   └── shared/     # Shared utilities
 └── README.md
+```
+
+## Installation
+
+### Quick Install (Recommended)
+
+```bash
+# Clone and install
+git clone <repo>
+cd localtunnel
+bun install
+
+# Build and link CLI tools
+bun run link
+
+# Add bun bin to PATH (add to ~/.zshrc or ~/.bashrc)
+export PATH="$HOME/.bun/bin:$PATH"
+
+# Verify installation
+lt --help
+localtunnel-server --help
+```
+
+### Or use the install script
+
+```bash
+bun run install:cli
+```
+
+### Manual Setup
+
+```bash
+bun install
+bun run compile --filter localtunnel-client
+bun run compile --filter localtunnel-server
+
+# Run directly
+./packages/client/lt --port 3000
+./packages/server/localtunnel-server --port 8080
 ```
 
 ## Packages
@@ -64,6 +104,12 @@ bun test
 
 # Build packages
 bun run compile
+
+# Link CLI tools globally (adds lt and localtunnel-server to ~/.bun/bin)
+bun run link
+
+# Unlink CLI tools
+bun run unlink
 
 # Lint
 bun run lint

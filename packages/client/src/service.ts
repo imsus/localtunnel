@@ -3,6 +3,8 @@ import { ConnectionError, TunnelError } from "./errors";
 
 export interface TunnelConfig {
   host: string;
+  port?: number;
+  tls?: boolean;
   subdomain?: string;
   localPort: number;
   localHost?: string;
