@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { Effect } from "effect";
+
 import { ConnectionError, TimeoutError, TunnelError, TunnelErrors } from "../src/errors.js";
 import { TunnelConfig } from "../src/service.js";
 
