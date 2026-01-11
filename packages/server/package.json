@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "bun bundle --outdir dist --format esm",
+    "compile": "bun build --compile ./bin/server.ts --outfile localtunnel-server",
     "test": "bun test"
   },
   "dependencies": {

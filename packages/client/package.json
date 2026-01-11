@@ -9,6 +9,7 @@
   },
   "scripts": {
     "build": "bun bundle --outdir dist --format esm",
+    "compile": "bun build --compile ./bin/lt.ts --outfile lt",
     "test": "bun test"
   },
   "dependencies": {
