@@ -234,6 +234,97 @@ describe("HeaderHostTransformer", () => {
     const transformer = new HeaderHostTransformer(config);
     expect((transformer as any).host).toBe("test.local");
   });
+
+  test("createTransform replaces Host header in first chunk", async () => {
+    const transformer = HeaderHostTransformer.create("newhost.local");
+
+    const readable = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("GET / HTTP/1.1\r\nHost: oldhost.local\r\n\r\n"));
+        controller.close();
+      },
+      cancel() {},
+    });
+
+    const transformed = transformer.transform(readable);
+    const reader = transformed.getReader();
+    const chunks: Uint8Array[] = [];
+    let done = false;
+
+    while (!done) {
+      const result = await reader.read();
+      done = result.done;
+      if (!done && result.value) {
+        chunks.push(result.value);
+      }
+    }
+
+    const result = new TextDecoder().decode(chunks.reduce((acc, chunk) => {
+      const newArr = new Uint8Array(acc.length + chunk.length);
+      newArr.set(acc);
+      newArr.set(chunk, acc.length);
+      return newArr;
+    }, new Uint8Array(0)));
+
+    expect(result).toContain("Host: newhost.local");
+    expect(result).not.toContain("Host: oldhost.local");
+  });
+
+  test("createTransform passes through chunks after first replacement", async () => {
+    const transformer = HeaderHostTransformer.create("target.local");
+
+    const readable = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("GET / HTTP/1.1\r\nHost: original.local\r\n\r\n"));
+        controller.enqueue(new TextEncoder().encode("Some other data"));
+        controller.close();
+      },
+      cancel() {},
+    });
+
+    const transformed = transformer.transform(readable);
+    const reader = transformed.getReader();
+    const chunks: Uint8Array[] = [];
+    let done = false;
+
+    while (!done) {
+      const result = await reader.read();
+      done = result.done;
+      if (!done && result.value) {
+        chunks.push(result.value);
+      }
+    }
+
+    const result = new TextDecoder().decode(chunks.reduce((acc, chunk) => {
+      const newArr = new Uint8Array(acc.length + chunk.length);
+      newArr.set(acc);
+      newArr.set(chunk, acc.length);
+      return newArr;
+    }, new Uint8Array(0)));
+
+    expect(result).toContain("Host: target.local");
+    expect(result).toContain("Some other data");
+  });
+
+  test("createTransform handles Host header with different casing", async () => {
+    const transformer = HeaderHostTransformer.create("test.local");
+
+    const readable = new ReadableStream({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode("GET / HTTP/1.1\r\nhost: lowercase.local\r\n\r\n"));
+        controller.close();
+      },
+      cancel() {},
+    });
+
+    const transformed = transformer.transform(readable);
+    const reader = transformed.getReader();
+    const { value, done } = await reader.read();
+
+    expect(done).toBe(false);
+    const result = new TextDecoder().decode(value);
+    expect(result).toContain("host: test.local");
+  });
 });
 
 describe("Tunnel interface", () => {

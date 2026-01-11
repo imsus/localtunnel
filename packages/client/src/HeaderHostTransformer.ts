@@ -12,6 +12,10 @@ export class HeaderHostTransformer {
     this.replaced = false;
   }
 
+  transform(stream: ReadableStream<Uint8Array>): ReadableStream<Uint8Array> {
+    return stream.pipeThrough(this.createTransform() as any);
+  }
+
   private createTransform(): TransformStream<Uint8Array, Uint8Array> {
     return new TransformStream({
       transform: (chunk, controller) => {
