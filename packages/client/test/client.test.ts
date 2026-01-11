@@ -240,7 +240,9 @@ describe("HeaderHostTransformer", () => {
 
     const readable = new ReadableStream({
       start(controller) {
-        controller.enqueue(new TextEncoder().encode("GET / HTTP/1.1\r\nHost: oldhost.local\r\n\r\n"));
+        controller.enqueue(
+          new TextEncoder().encode("GET / HTTP/1.1\r\nHost: oldhost.local\r\n\r\n"),
+        );
         controller.close();
       },
       cancel() {},
@@ -259,12 +261,14 @@ describe("HeaderHostTransformer", () => {
       }
     }
 
-    const result = new TextDecoder().decode(chunks.reduce((acc, chunk) => {
-      const newArr = new Uint8Array(acc.length + chunk.length);
-      newArr.set(acc);
-      newArr.set(chunk, acc.length);
-      return newArr;
-    }, new Uint8Array(0)));
+    const result = new TextDecoder().decode(
+      chunks.reduce((acc, chunk) => {
+        const newArr = new Uint8Array(acc.length + chunk.length);
+        newArr.set(acc);
+        newArr.set(chunk, acc.length);
+        return newArr;
+      }, new Uint8Array(0)),
+    );
 
     expect(result).toContain("Host: newhost.local");
     expect(result).not.toContain("Host: oldhost.local");
@@ -275,7 +279,9 @@ describe("HeaderHostTransformer", () => {
 
     const readable = new ReadableStream({
       start(controller) {
-        controller.enqueue(new TextEncoder().encode("GET / HTTP/1.1\r\nHost: original.local\r\n\r\n"));
+        controller.enqueue(
+          new TextEncoder().encode("GET / HTTP/1.1\r\nHost: original.local\r\n\r\n"),
+        );
         controller.enqueue(new TextEncoder().encode("Some other data"));
         controller.close();
       },
@@ -295,12 +301,14 @@ describe("HeaderHostTransformer", () => {
       }
     }
 
-    const result = new TextDecoder().decode(chunks.reduce((acc, chunk) => {
-      const newArr = new Uint8Array(acc.length + chunk.length);
-      newArr.set(acc);
-      newArr.set(chunk, acc.length);
-      return newArr;
-    }, new Uint8Array(0)));
+    const result = new TextDecoder().decode(
+      chunks.reduce((acc, chunk) => {
+        const newArr = new Uint8Array(acc.length + chunk.length);
+        newArr.set(acc);
+        newArr.set(chunk, acc.length);
+        return newArr;
+      }, new Uint8Array(0)),
+    );
 
     expect(result).toContain("Host: target.local");
     expect(result).toContain("Some other data");
@@ -311,7 +319,9 @@ describe("HeaderHostTransformer", () => {
 
     const readable = new ReadableStream({
       start(controller) {
-        controller.enqueue(new TextEncoder().encode("GET / HTTP/1.1\r\nhost: lowercase.local\r\n\r\n"));
+        controller.enqueue(
+          new TextEncoder().encode("GET / HTTP/1.1\r\nhost: lowercase.local\r\n\r\n"),
+        );
         controller.close();
       },
       cancel() {},
