@@ -11,20 +11,10 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "composite": true,
-    "tsBuildInfoFile": "node_modules/.tmp/tsconfig.tsbuildinfo"
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
   },
-  "include": [
-    "packages/*/src/**/*.ts",
-    "packages/*/bin/**/*.ts",
-    "packages/*/test/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ],
-  "references": [
-    { "path": "./packages/client" },
-    { "path": "./packages/server" }
-  ]
+  "include": ["src/**/*.ts", "bin/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }
