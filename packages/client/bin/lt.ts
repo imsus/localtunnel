@@ -1,5 +1,5 @@
 #!/usr/bin/env bun
-import { openTunnel, type Tunnel } from "../src/client.js";
+import { openTunnel } from "../src/client.js";
 
 interface Args {
   port: number;
@@ -97,7 +97,7 @@ const tunnel = await openTunnel(parsedArgs.port, {
   allowInvalidCert: parsedArgs.allowInvalidCert,
 });
 
-console.log(`Tunnel established at ${tunnel.url}`);
+console.log("Tunnel established at " + tunnel.url);
 
 tunnel.close().then(() => {
   process.exit(0);

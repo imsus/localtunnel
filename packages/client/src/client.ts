@@ -1,8 +1,8 @@
-import { Effect, Scope, Layer, Context } from "effect";
+import { Effect, Scope } from "effect";
 import * as net from "net";
 import * as tls from "tls";
-import { TunnelConfig, TunnelService } from "./service.js";
-import { ConnectionError, TimeoutError, TunnelError, TunnelErrors } from "./errors.js";
+import { TunnelConfig } from "./service.js";
+import { ConnectionError, TunnelError, TunnelErrors } from "./errors.js";
 
 export interface Tunnel {
   url: string;
@@ -10,7 +10,7 @@ export interface Tunnel {
 }
 
 const connect = (host: string, port: number, useTls: boolean): Effect.Effect<net.Socket, ConnectionError, Scope> =>
-  Effect.withScope((scope) =>
+  Effect.withScope((_scope) =>
     Effect.gen(function* () {
       const socket = useTls ? tls.connect({ host, port }) : net.connect({ host, port });
 
@@ -181,3 +181,4 @@ export const openTunnelWithRetry = (
   openTunnel(port, opts).pipe(
     Effect.retry({ times: retries, delay })
   );
+
