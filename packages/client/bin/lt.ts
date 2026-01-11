@@ -1,23 +1,50 @@
 #!/usr/bin/env bun
 import { Effect } from "effect";
-import { openTunnel } from "../src/client.js";
+import { openTunnel } from "../src/client";
 
 interface Args {
   port: number;
   subdomain?: string;
   host?: string;
   localHost?: string;
-  localHttps?: boolean;
+  localHttps: boolean;
   localCert?: string;
   localKey?: string;
   localCa?: string;
-  allowInvalidCert?: boolean;
+  allowInvalidCert: boolean;
   help: boolean;
+}
+
+// Load .env file if it exists
+try {
+  const envPath = ".env";
+  if (await Bun.file(envPath).exists()) {
+    const envFile = await Bun.file(envPath).text();
+    for (const line of envFile.split("\n")) {
+      const trimmed = line.trim();
+      if (trimmed && !trimmed.startsWith("#")) {
+        const [key, ...valueParts] = trimmed.split("=");
+        if (key && valueParts.length) {
+          process.env[key] = valueParts.join("=");
+        }
+      }
+    }
+  }
+} catch {
+  // .env file not found or parse error, use defaults
 }
 
 const args = Bun.argv.slice(2);
 const parsedArgs: Args = {
   port: 0,
+  subdomain: process.env.LT_SUBDOMAIN,
+  host: process.env.LT_HOST || "localtunnel.me",
+  localHost: process.env.LT_LOCAL_HOST,
+  localHttps: process.env.LT_LOCAL_HTTPS === "true",
+  localCert: process.env.LT_LOCAL_CERT,
+  localKey: process.env.LT_LOCAL_KEY,
+  localCa: process.env.LT_LOCAL_CA,
+  allowInvalidCert: process.env.LT_ALLOW_INVALID_CERT === "true",
   help: false,
 };
 

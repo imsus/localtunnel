@@ -25,6 +25,9 @@ yarn-error.log*
 # Test coverage
 coverage
 
+# Environment variables
+.env
+
 # Bun
 .bun
 bun.lockb
