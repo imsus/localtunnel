@@ -1,6 +1,21 @@
 {
   "name": "localtunnel-server",
+  "description": "Run your own localtunnel server. Accepts tunnel connections and proxies HTTP requests.",
   "version": "3.0.0",
+  "keywords": [
+    "localtunnel",
+    "tunnel-server",
+    "reverse-proxy",
+    "bun"
+  ],
+  "homepage": "https://github.com/imsus/localtunnel",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/imsus/localtunnel.git",
+    "directory": "packages/server"
+  },
+  "license": "MIT",
+  "author": "Imam Susanto <abc.imams@gmail.com>",
   "bin": {
     "localtunnel-server": "./bin/server.ts"
   },

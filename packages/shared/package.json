@@ -1,6 +1,21 @@
 {
   "name": "localtunnel-shared",
+  "description": "Shared utilities for localtunnel packages. Environment configuration and utilities.",
   "version": "3.0.0",
+  "keywords": [
+    "localtunnel",
+    "shared",
+    "utilities",
+    "bun"
+  ],
+  "homepage": "https://github.com/imsus/localtunnel",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/imsus/localtunnel.git",
+    "directory": "packages/shared"
+  },
+  "license": "MIT",
+  "author": "Imam Susanto <abc.imams@gmail.com>",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

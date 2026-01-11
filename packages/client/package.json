@@ -1,6 +1,22 @@
 {
   "name": "localtunnel-client",
+  "description": "Expose localhost to the world. Connect to a tunnel server and forward traffic.",
   "version": "3.0.0",
+  "keywords": [
+    "localtunnel",
+    "tunnel",
+    "expose-localhost",
+    "reverse-proxy",
+    "bun"
+  ],
+  "homepage": "https://github.com/imsus/localtunnel",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/imsus/localtunnel.git",
+    "directory": "packages/client"
+  },
+  "license": "MIT",
+  "author": "Imam Susanto <abc.imams@gmail.com>",
   "bin": {
     "lt": "./bin/lt.ts"
   },
