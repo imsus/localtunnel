@@ -1,4 +1,4 @@
-import { Effect, Scope, Stream } from "effect";
+import { Effect, Scope } from "effect";
 import * as net from "net";
 import { ServerError, ClientError, type ServerErrors } from "./errors.js";
 
@@ -16,34 +16,30 @@ const generateId = (): string => {
 };
 
 const parseClientId = (socket: net.Socket): Effect.Effect<string, ClientError> =>
-  Effect.gen(function* () {
-    const handshake = yield* Effect.async<string, ClientError>((resume) => {
-      let data = "";
+  Effect.async<string, ClientError>((resume) => {
+    let data = "";
 
-      const onData = (chunk: Buffer) => {
-        data += chunk.toString();
-        const match = data.match(/GET \/\?(\w+)/);
-        if (match) {
-          socket.removeListener("data", onData);
-          socket.removeListener("error", onError);
-          resume(Effect.succeed(match[1]));
-        }
-      };
-
-      const onError = (err: Error) => {
+    const onData = (chunk: Buffer) => {
+      data += chunk.toString();
+      const match = data.match(/GET \/\?(\w+)/);
+      if (match) {
         socket.removeListener("data", onData);
         socket.removeListener("error", onError);
-        resume(Effect.fail(new ClientError(err.message)));
-      };
+        resume(Effect.succeed(match[1]));
+      }
+    };
 
-      socket.on("data", onData);
-      socket.on("error", onError);
-    });
+    const onError = (err: Error) => {
+      socket.removeListener("data", onData);
+      socket.removeListener("error", onError);
+      resume(Effect.fail(new ClientError(err.message)));
+    };
 
-    return handshake;
+    socket.on("data", onData);
+    socket.on("error", onError);
   });
 
-const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope> =>
+const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope.Scope> =>
   Effect.gen(function* () {
     const clientId = yield* parseClientId(socket).pipe(Effect.orElseSucceed(() => generateId()));
 
@@ -56,45 +52,40 @@ const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope>
       }),
     );
 
-    const dataStream = Stream.fromReadable(socket, {
-      onError: (err) => new ProxyError(err.message),
+    socket.on("data", (chunk: Buffer) => {
+      for (const [id, clientSocket] of clients.entries()) {
+        if (id !== clientId && !clientSocket.destroyed) {
+          clientSocket.write(chunk);
+        }
+      }
     });
 
-    yield* Stream.run(
-      dataStream.pipe(
-        Stream.flatMap((chunk) =>
-          Stream.fromEffect(
-            Effect.forEach(
-              Array.from(clients.entries()),
-              ([id, clientSocket]) => {
-                if (id !== clientId && !clientSocket.destroyed) {
-                  return Effect.sync(() => clientSocket.write(chunk));
-                }
-                return Effect.unit;
-              },
-              { concurrency: "unbounded" },
-            ),
-          ),
-        ),
-      ),
-    );
+    socket.on("close", () => {
+      clients.delete(clientId);
+    });
+
+    socket.on("error", () => {
+      clients.delete(clientId);
+    });
   });
 
-const acceptConnections = (server: net.Server): Stream.Stream<net.Socket, ServerError> =>
-  Stream.async<net.Socket, ServerError>((emit) => {
-    server.on("connection", (socket) => {
-      emit(Effect.succeed(socket));
+const acceptConnection = (
+  server: net.Server,
+): Effect.Effect<net.Socket, ServerError, never> =>
+  Effect.async<net.Socket, ServerError>((resume) => {
+    server.once("connection", (socket) => {
+      resume(Effect.succeed(socket));
     });
 
-    server.on("error", (err) => {
-      emit(Effect.fail(new ServerError(err.message)));
+    server.once("error", (err) => {
+      resume(Effect.fail(new ServerError(err.message)));
     });
   });
 
 export const createServer = (
   port: number,
   host = "0.0.0.0",
-): Effect.Effect<void, ServerErrors, Scope> =>
+): Effect.Effect<void, ServerErrors, Scope.Scope> =>
   Effect.gen(function* () {
     const server = net.createServer();
 
@@ -102,7 +93,7 @@ export const createServer = (
 
     yield* Effect.async<void, ServerError>((resume) => {
       server.listen(port, host, () => {
-        resume(Effect.unit);
+        resume(Effect.succeed(undefined));
       });
 
       server.on("error", (err) => {
@@ -110,15 +101,16 @@ export const createServer = (
       });
     });
 
-    const connections = yield* acceptConnections(server);
+    while (true) {
+      const socket = yield* acceptConnection(server).pipe(
+        Effect.orElse((err) => {
+          console.error("Accept error:", err.message);
+          return acceptConnection(server);
+        }),
+      );
 
-    yield* Stream.run(
-      connections.pipe(
-        Stream.flatMap((socket) =>
-          Stream.fromEffect(handleConnection(socket), { concurrency: "unbounded" }),
-        ),
-      ),
-    );
+      yield* handleConnection(socket);
+    }
   });
 
 export const startServer = (port: number, host?: string): Promise<void> =>
