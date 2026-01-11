@@ -1,6 +1,6 @@
 import { Effect, Scope } from "effect";
 import * as net from "net";
-import { ServerError, ClientError, type ServerErrors } from "./errors";
+import { ServerError, ClientError, ServerErrors } from "./errors";
 
 export interface ServerConfig {
   host: string;
@@ -21,7 +21,7 @@ const generateId = (): string => {
 
 const parsePathSubdomain = (path: string): string | null => {
   const match = path.match(/^\/([a-z0-9]+)(\/|$)/);
-  return match ? match[1] : null;
+  return match ? (match[1] ?? null) : null;
 };
 
 interface ClientConnection {
@@ -75,7 +75,7 @@ const parseClientHandshake = (socket: net.Socket): Effect.Effect<string, ClientE
     const onData = (chunk: Buffer) => {
       data += chunk.toString();
       const match = data.match(/GET \/\?(\w+)/);
-      if (match) {
+      if (match && match[1]) {
         socket.removeListener("data", onData);
         socket.removeListener("error", onError);
         resume(Effect.succeed(match[1]));

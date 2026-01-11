@@ -93,6 +93,25 @@ Run your own tunnel server. Accepts tunnel connections and proxies HTTP requests
 localtunnel-server --port 8080
 ```
 
+### @localtunnel/shared
+
+Shared utilities for localtunnel packages. Provides environment configuration and env file loading.
+
+**Features:**
+
+- `.env` file loading
+- Client/server configuration from args and environment variables
+- Consistent configuration across packages
+
+**Usage:**
+
+```typescript
+import { getClientConfig, getServerConfig } from "@localtunnel/shared";
+
+const clientConfig = getClientConfig({ port: 3000 });
+const serverConfig = getServerConfig({ port: 8080 });
+```
+
 ## Development
 
 ```bash

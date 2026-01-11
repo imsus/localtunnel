@@ -77,7 +77,7 @@ const requestTunnel = (
       const onData = (chunk: Buffer) => {
         data += chunk.toString();
         const match = data.match(/url=(\S+)/);
-        if (match) {
+        if (match && match[1]) {
           socket.removeListener("data", onData);
           socket.removeListener("error", onError);
           resume(Effect.succeed(match[1]));
@@ -286,7 +286,7 @@ const openSingleTunnel = (
     remote.on("data", (data) => {
       const text = data.toString();
       const match = text.match(/^(\w+) (\S+)/);
-      if (match) {
+      if (match && match[1] && match[2]) {
         PubSub.publish(requestPubSub, { method: match[1], path: match[2] });
       }
     });

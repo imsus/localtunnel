@@ -1,164 +1,127 @@
-# AI Agents Integration Guide
+# AGENTS.md - Localtunnel Development Guide
 
-This document describes how AI agents and automated systems can interact with localtunnel.
+## Project Overview
 
-## Overview
+Localtunnel is a Bun-based TypeScript monorepo with three packages:
+- `packages/client` - Client for creating tunnels to local servers
+- `packages/server` - Server that manages tunnel connections
+- `packages/shared` - Shared utilities and types
 
-localtunnel provides a simple way to expose localhost services to the internet, making it ideal for:
+Uses the [Effect](https://effect.website) library for functional error handling and concurrency.
 
-- AI agents needing webhook callbacks
-- Automated testing requiring public URLs
-- Remote debugging sessions
-- CI/CD pipeline integrations
-
-## Quick Start for Agents
+## Build, Lint, and Test Commands
 
 ```bash
-# Expose a local service on port 3000
-lt --port 3000
+# Run all tests
+bun test
 
-# With custom subdomain
-lt --port 3000 --subdomain my-agent-task-123
+# Run a single test file
+bun test test/e2e.test.ts
+bun test packages/client/test/client.test.ts
+bun test packages/server/test/server.test.ts
 
-# Disable TLS for local testing
-lt --port 8080 --no-tls
+# Run tests with coverage
+bun test --coverage
+
+# Lint codebase
+oxlint .
+
+# Format codebase (writes changes)
+oxfmt --write .
+
+# Check formatting without writing
+oxfmt --check .
+
+# Full validation (lint + format check + tests)
+oxlint . && oxfmt --check . && bun test
+
+# TypeScript type checking
+npx tsc --noEmit
+
+# Compile all packages
+bun run --filter '*' compile
+
+# Link CLI tools (after compile)
+bun run link
+
+# Install CLI shortcuts
+npm run install:cli
 ```
 
-## Environment Variables
+## Code Style Guidelines
 
-Agents can configure localtunnel via environment variables:
+### TypeScript
+- Use explicit TypeScript types for function parameters and return values
+- Use interfaces for configuration objects (e.g., `TunnelConfig`, `ServerConfig`)
+- Use type exports: `export type { ServerErrors } from "./errors";`
 
-| Variable                | Description                  | Default          |
-| ----------------------- | ---------------------------- | ---------------- |
-| `LT_PORT`               | Local port to tunnel         | -                |
-| `LT_SUBDOMAIN`          | Request a specific subdomain | -                |
-| `LT_HOST`               | Tunnel server hostname       | `localtunnel.me` |
-| `LT_LOCAL_HOST`         | Proxy to different hostname  | -                |
-| `LT_LOCAL_HTTPS`        | Enable HTTPS to local server | `false`          |
-| `LT_TLS`                | Enable TLS                   | `true`           |
-| `LT_ALLOW_INVALID_CERT` | Skip cert validation         | `false`          |
+### Effect Library
+- Use `Effect.gen(function* () { ... })` for async operations
+- Use `yield*` to extract values from Effects
+- Return Effect types explicitly: `Effect.Effect<A, E, R>`
+- Use `Effect.tryPromise` for promise-to-Effect conversion
+- Use `Effect.async` for callback-based APIs
+- Use `Effect.addFinalizer` for cleanup logic
+- Use `Schedule` for retry policies (e.g., `Schedule.exponential`)
 
-Example `.env` file:
-```bash
-LT_PORT=3000
-LT_SUBDOMAIN=agent-webhook-abc123
-LT_HOST=my-tunnel-server.com
-```
+### Error Handling
+- Use tagged error classes with `_tag` property for discriminated unions
+- Define error types as unions: `type TunnelErrors = ConnectionError | TimeoutError | TunnelError`
+- Example error class pattern:
+  ```typescript
+  export class ConnectionError {
+    readonly _tag = "ConnectionError";
+    constructor(
+      readonly host: string,
+      readonly port: number,
+      readonly reason: string,
+    ) {}
+  }
+  ```
 
-## Programmatic Usage
+### Imports
+- Use named imports from Effect: `import { Effect, Schedule, PubSub } from "effect";`
+- Use `* as` for Node.js modules: `import * as net from "net";`
+- Group imports: Effect first, then Node.js, then local modules
+- Re-export types: `export * from "./env";`
 
-### Node.js / Bun
+### Formatting (oxfmt)
+- Line width: 100 characters
+- Indent: 2 spaces
+- Quote style: double quotes
+- No trailing commas
 
-```typescript
-import { openTunnel } from "@localtunnel/client";
+### Naming Conventions
+- Interfaces: PascalCase (e.g., `TunnelConfig`, `ClientConnection`)
+- Functions: camelCase (e.g., `openTunnel`, `parseClientHandshake`)
+- Constants: UPPER_SNAKE_CASE for compile-time constants (e.g., `CHARS`)
+- Private/internal variables: camelCase with underscore prefix if needed
+- Error classes: PascalCase with "Error" suffix
 
-const tunnel = await openTunnel(3000, {
-  subdomain: "agent-task-123",
-  host: "localtunnel.me",
-});
+### File Organization
+- One main export file per package (`src/index.ts`)
+- Errors in dedicated files (`src/errors.ts`)
+- Services in `src/service.ts`
+- Main logic in `src/{client,server}.ts`
+- Tests alongside source in `test/` directory
+- Use `.js` extension in test imports: `import { ... } from "../src/errors.js";`
 
-console.log("Tunnel URL:", tunnel.url);
+### General Patterns
+- Use nullish coalescing for defaults: `host ?? "localhost"`
+- Use optional chaining: `info.remote_ip || info.remote_host`
+- Use truthy checks for undefined: `config.allowInvalidCert ?? false`
+- Avoid `any` type; use explicit types or `unknown` with type guards
+- Keep functions small and focused
+- Use `Effect.scoped` for resource management
 
-// Listen for requests
-tunnel.onRequest(({ method, path }) => {
-  console.log(`${method} ${path}`);
-});
+### Testing
+- Use `bun:test` with `describe`, `test`, `expect`
+- Use `beforeAll`/`afterAll` for setup/teardown
+- Name test suites with `describe("Feature", ...)`
+- Use descriptive test names: `test("Server returns tunnel URL on request", ...)`
 
-// Clean up
-await tunnel.close();
-```
-
-### Python (via subprocess)
-
-```python
-import subprocess
-import json
-import time
-
-# Start tunnel
-proc = subprocess.Popen(
-    ["lt", "--port", "8000", "--subdomain", "my-agent-task"],
-    stdout=subprocess.PIPE,
-    text=True
-)
-
-# Parse URL from output
-time.sleep(2)
-# URL will be printed: "Tunnel established at http://my-agent-task.loca.lt"
-
-# Send URL to remote system
-tunnel_url = "http://my-agent-task.loca.lt"
-# ...
-
-proc.terminate()
-```
-
-## CI/CD Integration
-
-### GitHub Actions
-
-```yaml
-- name: Expose localhost for testing
-  run: |
-    lt --port 3000 --subdomain pr-${{ github.pr.number }} &
-    TUNNEL_PID=$!
-    echo "TUNNEL_URL=http://pr-${{ github.pr.number }}.loca.lt" >> $GITHUB_ENV
-    # Run tests that need the tunnel
-    # ...
-    kill $TUNNEL_PID
-```
-
-### Automated Testing
-
-```typescript
-// Test that your AI agent's webhook works publicly
-import { openTunnel } from "@localtunnel/client";
-
-const tunnel = await openTunnel(3000);
-
-const webhookUrl = tunnel.url;
-console.log(`Share this URL: ${webhookUrl}`);
-
-// Your AI agent can now send callbacks to this URL
-// ...
-
-await tunnel.close();
-```
-
-## Security Considerations
-
-1. **Temporary tunnels**: Tunnels exist only while the process runs
-2. **Subdomain uniqueness**: Each tunnel gets a unique URL
-3. **Certificate validation**: Use `LT_ALLOW_INVALID_CERT=false` in production
-4. **Rate limiting**: Server may impose limits on tunnel creation
-
-## Troubleshooting
-
-### Tunnel fails to establish
-
-```bash
-# Check port is accessible
-lt --port 3000 --host 127.0.0.1 --server-port 8080 --no-tls
-
-# Check firewall allows outbound connections
-curl -I https://localtunnel.me
-```
-
-### Subdomain not available
-
-```bash
-# Let server assign random subdomain
-lt --port 3000
-```
-
-### Connection timeout
-
-```bash
-# Increase timeout or check network
-lt --port 3000 --local-host localhost
-```
-
-## Support
-
-- Issues: GitHub Issues
-- Docs: [README.md](./README.md)
+### Code to Avoid
+- `console.log` in production code (allowed with `noConsole: "warn"` in oxlint)
+- `debugger` statements (error in oxlint)
+- Comments unless explaining complex logic
+- Default exports (use named exports)

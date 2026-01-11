@@ -1,18 +1,7 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "noEmit": true,
-    "isolatedModules": true,
-    "resolveJsonModule": true,
     "types": ["bun"],
-    "allowImportingTsExtensions": true,
     "baseUrl": ".",
     "paths": {
       "localtunnel-shared/*": ["../shared/src/*"]
