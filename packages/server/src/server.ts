@@ -16,7 +16,7 @@ const generateId = (): string => {
 };
 
 const parseClientId = (socket: net.Socket): Effect.Effect<string, ClientError> =>
-  Effect.async((resume) => {
+  Effect.async<string, ClientError>((resume) => {
     let data = "";
 
     const onData = (chunk: Buffer) => {
@@ -69,22 +69,15 @@ const handleConnection = (socket: net.Socket): Effect.Effect<void, never, Scope.
     });
   });
 
-const acceptConnection = (server: net.Server): Effect.Effect<net.Socket, ServerError> =>
-  Effect.async((resume) => {
-    const onConnection = (socket: net.Socket) => {
-      server.removeListener("connection", onConnection);
-      server.removeListener("error", onError);
+const acceptConnection = (server: net.Server): Effect.Effect<net.Socket, ServerError, never> =>
+  Effect.async<net.Socket, ServerError, never>((resume) => {
+    server.once("connection", (socket: net.Socket) => {
       resume(Effect.succeed(socket));
-    };
+    });
 
-    const onError = (err: Error) => {
-      server.removeListener("connection", onConnection);
-      server.removeListener("error", onError);
+    server.once("error", (err: Error) => {
       resume(Effect.fail(new ServerError(err.message)));
-    };
-
-    server.on("connection", onConnection);
-    server.on("error", onError);
+    });
   });
 
 export const createServer = (
@@ -96,11 +89,11 @@ export const createServer = (
 
     yield* Effect.addFinalizer(() => Effect.sync(() => server.close()));
 
-    yield* Effect.async((resume) => {
-      const onListen = () => {
+    yield* Effect.async<void, ServerError, never>((resume) => {
+      server.on("listening", () => {
         server.removeListener("error", onError);
         resume(Effect.succeed(undefined));
-      };
+      });
 
       const onError = (err: Error) => {
         server.removeListener("listening", onListen);
@@ -108,20 +101,24 @@ export const createServer = (
         resume(Effect.fail(new ServerError(err.message)));
       };
 
-      server.on("listening", onListen);
-      server.on("error", onError);
+      const onListen = () => {
+        server.removeListener("error", onError);
+        resume(Effect.succeed(undefined));
+      };
 
+      server.on("error", onError);
       server.listen(port, host);
     });
 
     while (true) {
-      const socket = yield* acceptConnection(server).pipe(
-        Effect.orElse((err) => {
-          console.error("Accept error:", err.message);
-          return acceptConnection(server);
-        }),
-      );
+      const socketResult = yield* acceptConnection(server);
 
+      if (socketResult._tag === "Left") {
+        console.error("Accept error:", socketResult.left.message);
+        continue;
+      }
+
+      const socket = socketResult.right;
       yield* handleConnection(socket);
     }
   });
