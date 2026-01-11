@@ -28,3 +28,5 @@ coverage
 # Bun
 .bun
 bun.lockb
+lt
+localtunnel-server
