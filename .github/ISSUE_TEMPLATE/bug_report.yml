@@ -1,0 +1,72 @@
+name: Bug Report
+description: Report a bug in localtunnel
+labels: ["bug"]
+body:
+
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out this form to help us understand and fix the issue.
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of localtunnel are you using?
+      placeholder: "3.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: runtime
+    attributes:
+      label: Runtime
+      description: What runtime are you using?
+      options:
+        - Bun
+        - Node.js (not supported in 3.x)
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you running on?
+      placeholder: "macOS 14.2"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: Describe the bug in detail. What happened? What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: |
+        Provide a minimal set of steps to reproduce the bug.
+        1. First step
+        2. Second step
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Include any relevant log output
+      render: shell
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: If applicable, provide your config file or CLI arguments
+      render: shell

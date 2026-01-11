@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Discord Community
+    url: https://discord.gg/localtunnel
+    about: Join our Discord for real-time help and discussions
+  - name: Documentation
+    url: https://github.com/imsus/localtunnel#readme
+    about: Check the README for usage documentation
