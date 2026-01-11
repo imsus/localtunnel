@@ -37,6 +37,11 @@ This is a complete rewrite of localtunnel, incompatible with previous versions.
 - Removed: axios, debug, openurl, yargs
 - Added: effect, pino, picocolors, bun
 
+## Requirements
+
+- Bun 1.0.0+ (this is a Bun-native project, not compatible with Node.js alone)
+- No longer supports Node.js runtime
+
 # 2.0.2 (2021-09-18)
 
 - Upgrade dependencies
